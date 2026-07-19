@@ -1,5 +1,16 @@
 {
+  "scopedRegistries": [
+    {
+      "name": "Meta XR SDK",
+      "url": "https://npm.developer.oculus.com",
+      "scopes": [
+        "com.meta.xr"
+      ]
+    }
+  ],
   "dependencies": {
+    "com.meta.xr.sdk.core": "203.0.0",
+    "com.meta.xr.sdk.interaction.ovr": "203.0.0",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.ai.navigation": "2.0.11",
     "com.unity.collab-proxy": "2.11.4",
@@ -41,6 +52,8 @@
     "com.unity.modules.video": "1.0.0",
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
-    "com.unity.modules.xr": "1.0.0"
+    "com.unity.modules.xr": "1.0.0",
+    "com.unity.xr.management": "4.7.0",
+    "com.unity.xr.openxr": "1.18.0-pre.2"
   }
 }

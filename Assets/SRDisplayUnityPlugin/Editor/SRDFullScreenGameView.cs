@@ -70,6 +70,7 @@ namespace SRD.Editor
                    || PlayerSettings.defaultScreenHeight != SRDSettings.DeviceInfo.ScreenRect.Height;
         }
 
+#if UNITY_EDITOR_WIN
         [InitializeOnLoadMethod]
         static void SetSceneInitializer()
         {
@@ -82,6 +83,7 @@ namespace SRD.Editor
                 EditorApplication.update += CloseUnityGameView;
             };
         }
+#endif
 
         private static void CloseUnityGameView()
         {

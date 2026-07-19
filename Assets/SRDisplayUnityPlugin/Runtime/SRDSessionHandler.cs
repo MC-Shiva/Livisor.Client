@@ -8,7 +8,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
-using UnityEditor;
 using SRD.Utils;
 
 namespace SRD.Core
@@ -62,6 +61,7 @@ namespace SRD.Core
 #endif
         private static void InitializeOnLoad()
         {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
             Application.quitting += () =>
             {
                 if(Instance._isSessionRunning)
@@ -73,10 +73,17 @@ namespace SRD.Core
                     }
                 }
             };
+#endif
         }
 
         private SRDSessionHandler()
         {
+#if !(UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN)
+            _isLibraryLinked = false;
+            _prevState = SrdXrSessionState.SESSION_STATE_MAX_ENUM;
+            _srdSubsystems = new List<ISRDSubsystem>();
+            return;
+#endif
             var isLinked = SRDCorePlugin.LinkXrLibraryWin64();
             if(!isLinked && _isLibraryLinked)
             {

@@ -64,7 +64,7 @@
 
 			float stride = _RingSrtide;
 			float strine_half = stride * 0.5;
-			float thickness = 1.0 - (_RingThicknessMin + length(_Spectra)*(_RingThicknessMax-_RingThicknessMin));
+			float thickness = max(1e-4, 1.0 - (_RingThicknessMin + length(_Spectra)*(_RingThicknessMax-_RingThicknessMin)));
 			float distance = abs(length(wpos) - _Time.y*0.1);
 			float fra = _gl_mod(distance, stride);
 			float cycle = floor((distance)/stride);
@@ -164,8 +164,8 @@
 			};
 			float depth = 1.0;
 			depth = tex2D(_ReflectionDepthTex, coord).r;
-			for(int i=1; i<9; ++i) {
-				depth = min(depth, tex2D(_ReflectionDepthTex, coord+blur_coords[i]).r);
+			for(int blurIndex=1; blurIndex<9; ++blurIndex) {
+				depth = min(depth, tex2D(_ReflectionDepthTex, coord+blur_coords[blurIndex]).r);
 			}
 
 			float4 H = float4((coord.x) * 2 - 1, (coord.y) * 2 - 1, depth, 1.0);
@@ -178,8 +178,8 @@
 
 			float g = saturate((grid_d+0.02)*50.0);
 			coord += n.xz * (g>0.0 && g<1.0 ? 1.0 : 0.0) * 0.02;
-			for(int i=0; i<9; ++i) {
-				refcolor += tex2D(_ReflectionTex, coord+blur_coords[i]*((1.0-fade_by_depth)*0.75+0.25)).rgb * 0.1111;
+			for(int sampleIndex=0; sampleIndex<9; ++sampleIndex) {
+				refcolor += tex2D(_ReflectionTex, coord+blur_coords[sampleIndex]*((1.0-fade_by_depth)*0.75+0.25)).rgb * 0.1111;
 				//refcolor += tex2D(_ReflectionTex, coord+blur_coords[i]).rgb * 0.1111;
 			}
 

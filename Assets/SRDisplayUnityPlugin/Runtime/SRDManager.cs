@@ -119,6 +119,7 @@ namespace SRD.Core
 
         private SRDCoreRenderer _srdCoreRenderer;
         internal SRDCoreRenderer SRDCoreRenderer { get { return _srdCoreRenderer; } }
+        private bool _isDisabledForUnsupportedPlatform;
 
         #region APIs
         /// <summary>
@@ -138,6 +139,13 @@ namespace SRD.Core
 
         void Awake()
         {
+#if !(UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN)
+            Debug.Log("SRDManager is disabled on this platform. Quest builds use the XR stage rig instead.");
+            _isDisabledForUnsupportedPlatform = true;
+            enabled = false;
+            gameObject.SetActive(false);
+            return;
+#endif
             UpdateSettings();
             foreach(var cond in GetForceQuitConditions())
             {
@@ -179,6 +187,10 @@ namespace SRD.Core
 
         void OnEnable()
         {
+            if(_isDisabledForUnsupportedPlatform)
+            {
+                return;
+            }
             SRDSessionHandler.Instance.RegisterSubsystem(_srdCoreRenderer);
             SRDSessionHandler.Instance.Start();
             CreateDisplayEdges();
@@ -188,12 +200,20 @@ namespace SRD.Core
 
         void OnDisable()
         {
+            if(_isDisabledForUnsupportedPlatform)
+            {
+                return;
+            }
             SRDSessionHandler.Instance.Stop();
             StopSRRenderingCoroutine();
         }
 
         void Update()
         {
+            if(_srdCoreRenderer == null)
+            {
+                return;
+            }
             SRDSessionHandler.Instance.PollEvent();
             UpdateScaleIfNeeded();
             _srdCrosstalkCorrection.HookUnityInspector(ref IsCrosstalkCorrectionActive, ref CrosstalkCorrectionType);
@@ -206,12 +226,19 @@ namespace SRD.Core
 
         void LateUpdate()
         {
+            if(_srdCoreRenderer == null)
+            {
+                return;
+            }
             _srdCoreRenderer.Update(this.transform, IsSpatialClippingActive);
         }
 
         void OnDestroy()
         {
-            _srdCoreRenderer.Dispose();
+            if(_srdCoreRenderer != null)
+            {
+                _srdCoreRenderer.Dispose();
+            }
         }
 
         #endregion
@@ -354,8 +381,6 @@ namespace SRD.Core
 
     }
 }
-
-
 
 
 

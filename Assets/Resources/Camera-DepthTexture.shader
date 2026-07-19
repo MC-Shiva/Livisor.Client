@@ -103,9 +103,10 @@ CGPROGRAM
 #pragma vertex vert
 #pragma fragment frag
 #pragma glsl_no_auto_normalization
-#include "UnityCG.cginc"
-#include "Lighting.cginc"
-#include "TerrainEngine.cginc"
+	#include "UnityCG.cginc"
+	#include "Lighting.cginc"
+	#include "TerrainEngine.cginc"
+	#include "UnityBuiltin3xTreeLibrary.cginc"
 struct v2f {
     float4 pos : SV_POSITION;
 	#ifdef UNITY_MIGHT_NOT_HAVE_DEPTH_TEXTURE
@@ -134,9 +135,10 @@ CGPROGRAM
 #pragma vertex vert
 #pragma fragment frag
 #pragma glsl_no_auto_normalization
-#include "UnityCG.cginc"
-#include "Lighting.cginc"
-#include "TerrainEngine.cginc"
+	#include "UnityCG.cginc"
+	#include "Lighting.cginc"
+	#include "TerrainEngine.cginc"
+	#include "UnityBuiltin3xTreeLibrary.cginc"
 struct v2f {
 	float4 pos : SV_POSITION;
 	float2 uv : TEXCOORD0;

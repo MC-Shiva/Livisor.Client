@@ -13,8 +13,24 @@ namespace SRD.Core
 {
     internal static class SRDCorePlugin
     {
+        private static bool IsSRDSupportedPlatform
+        {
+            get
+            {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+                return true;
+#else
+                return false;
+#endif
+            }
+        }
+
         public static bool LinkXrLibraryWin64()
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return false;
+            }
             return XRRuntimeAPI.LinkXrLibraryWin64();
         }
 
@@ -24,11 +40,19 @@ namespace SRD.Core
             {
                 debugLogFunc(message);
             }
+            if(!IsSRDSupportedPlatform)
+            {
+                return 0;
+            }
             return XRRuntimeAPI.ShowMessageBox(SRDApplicationWindow.GetSelfWindowHandle(), title, message);
         }
 
         public static void ShowNativeLog()
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return;
+            }
             var callback = new XRRuntimeAPI.DebugLogDelegate((message, log_levels) =>
             {
                 switch(log_levels)
@@ -53,11 +77,20 @@ namespace SRD.Core
 
         public static void UnlinkXrLibraryWin64()
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return;
+            }
             XRRuntimeAPI.UnlinkXrLibraryWin64();
         }
 
         public static SrdXrResult CreateSession(out IntPtr session)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                session = IntPtr.Zero;
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             var devices = new SrdXrDeviceInfo[1];
             var resultED = SRDCorePlugin.EnumerateDevices(devices, (uint)devices.Length);
             SrdXrSessionCreateInfo info;
@@ -73,11 +106,20 @@ namespace SRD.Core
 
         public static SrdXrResult DestroySession(out IntPtr session)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                session = IntPtr.Zero;
+                return SrdXrResult.SUCCESS;
+            }
             return XRRuntimeAPI.DestroySession(out session);
         }
 
         public static SrdXrResult BeginSession(IntPtr session)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             SrdXrSessionBeginInfo begin_info;
             {
                 begin_info.primary_view_configuration_type = SrdXrViewConfigurationType.VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
@@ -87,11 +129,19 @@ namespace SRD.Core
 
         public static SrdXrResult EndSession(IntPtr session)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return SrdXrResult.SUCCESS;
+            }
             return XRRuntimeAPI.EndSession(session);
         }
 
         public static SrdXrResult BeginFrame(IntPtr session, bool callInMainThread = true, bool callinRenderThread = false)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             if(callinRenderThread)
             {
                 GL.IssuePluginEvent(XRRuntimeAPI.GetBeginFramePtr(session), 0);
@@ -105,6 +155,10 @@ namespace SRD.Core
 
         public static SrdXrResult EndFrame(IntPtr session, bool callInMainThread = true, bool callinRenderThread = false)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             var end_info = new SrdXrFrameEndInfo();
             if(callinRenderThread)
             {
@@ -119,27 +173,51 @@ namespace SRD.Core
 
         public static SrdXrResult PollEvent(IntPtr session, out SrdXrEventDataBuffer eventData)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                eventData = new SrdXrEventDataBuffer();
+                return SrdXrResult.EVENT_UNAVAILABLE;
+            }
             return XRRuntimeAPI.PollEvent(session, out eventData);
         }
 
         public static SrdXrResult SetGraphicsAPI(IntPtr session, UnityEngine.Rendering.GraphicsDeviceType graphicsAPI)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             return XRRuntimeAPI.SetGraphicsAPI(session, XRRuntimeGraphicsDeviceType[graphicsAPI]);
         }
 
         public static void GenerateTextureAndShaders(IntPtr session, ref SrdXrTexture leftTextureData, ref SrdXrTexture rightTextureData, ref SrdXrTexture outTextureData)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return;
+            }
             GL.IssuePluginEvent(XRRuntimeAPI.GetGenerateTextureAndShadersPtr(session, ref leftTextureData, ref rightTextureData, ref outTextureData), 0);
         }
 
         public static SrdXrResult ShowCameraWindow(IntPtr session, bool show)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             return XRRuntimeAPI.ShowCameraWindow(session, show);
         }
 
         public static SrdXrResult GetFacePose(IntPtr session,
                                               out Pose headPose, out Pose eyePoseL, out Pose eyePoseR)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                headPose = Pose.identity;
+                eyePoseL = Pose.identity;
+                eyePoseR = Pose.identity;
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             var views = new SrdXrView[3];
             var viewLocateInfo = new SrdXrViewLocateInfo();
             {
@@ -156,6 +234,12 @@ namespace SRD.Core
         public static SrdXrResult GetProjectionMatrix(IntPtr session, float nearClip, float farClip,
                                                       out Matrix4x4 leftProjectionMatrix, out Matrix4x4 rightProjectionMatrix)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                leftProjectionMatrix = Matrix4x4.identity;
+                rightProjectionMatrix = Matrix4x4.identity;
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             var projMat = new SrdXrProjectionMatrix();
             var projectionMatrixInfo = new SrdXrProjectionMatrixInfo
             {
@@ -175,11 +259,21 @@ namespace SRD.Core
 
         public static SrdXrResult GetDeviceState(IntPtr session, out SrdXrDeviceState device_state)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                device_state = new SrdXrDeviceState();
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             return XRRuntimeAPI.GetDeviceState(session, out device_state);
         }
 
         public static bool GetSRDBodyBounds(IntPtr session, out SRDSettings.BodyBounds bodyBounds)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                bodyBounds = new SRDSettings.BodyBounds();
+                return false;
+            }
             SrdXrSRDData data;
             if(XRRuntimeAPI.GetPlatformSpecificData(session, out data) != SrdXrResult.SUCCESS)
             {
@@ -213,7 +307,9 @@ namespace SRD.Core
 
         public static SrdXrResult EnumerateDevices([In, Out] SrdXrDeviceInfo[] devices, UInt32 loadCount)
         {
-            var result = XRRuntimeAPI.EnumerateDevices(devices, loadCount);
+            var result = IsSRDSupportedPlatform
+                         ? XRRuntimeAPI.EnumerateDevices(devices, loadCount)
+                         : SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
             if(result != SrdXrResult.SUCCESS)
             {
                 for(int i = 0; i < loadCount; i++)
@@ -229,6 +325,10 @@ namespace SRD.Core
 
         public static int CountDevices()
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return 0;
+            }
             return (int)XRRuntimeAPI.CountDevices();
         }
 
@@ -236,6 +336,10 @@ namespace SRD.Core
 
         public static SrdXrResult SetActiveStateCrosstalkCorrection(IntPtr session, bool state, SrdXrCrosstalkCorrectionType type = DefaultCrosstalkCorrectionType)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             try
             {
                 var settings = new SrdXrCrosstalkCorrectionSettings_v1_1_0(state, type);
@@ -250,6 +354,12 @@ namespace SRD.Core
 
         public static SrdXrResult GetActiveStateCrosstalkCorrection(IntPtr session, out bool state, out SrdXrCrosstalkCorrectionType type)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                state = false;
+                type = DefaultCrosstalkCorrectionType;
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             try
             {
                 var result = XRRuntimeAPI.GetCrosstalkCorrectionSettings_v1_1_0(session, out var settings);
@@ -268,6 +378,10 @@ namespace SRD.Core
 
         public static SrdXrResult SetColorSpaceSettings(IntPtr session, ColorSpace colorSpace)
         {
+            if(!IsSRDSupportedPlatform)
+            {
+                return SrdXrResult.ERROR_RUNTIME_NOT_FOUND;
+            }
             var unityGamma = 2.2f;
             var settings = new SrdXrColorManagementSettings(colorSpace == ColorSpace.Gamma, unityGamma);
             return XRRuntimeAPI.SetColorManagementSettings(session, ref settings);

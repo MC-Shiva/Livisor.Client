@@ -742,6 +742,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ignoreFastForward: 1
+  useQuestXRWhenAvailable: 1
+  forceQuestXRInEditor: 0
+  questXRStageOrigin: {x: 0, y: 0, z: 4.27}
+  questXRStageRotation: {x: 0, y: 180, z: 0}
+  questXRPreviewHeadPosition: {x: 0, y: 1.35, z: 0}
   musicPlayerPrefab: {fileID: 100000, guid: 2b9a716c1d31d45a5b906738bd5ee33e, type: 3}
   mainCameraRigPrefab: {fileID: 100000, guid: 0f58e0fe394b24ed58b332f76fa9c423, type: 3}
   prefabsNeedsActivation:

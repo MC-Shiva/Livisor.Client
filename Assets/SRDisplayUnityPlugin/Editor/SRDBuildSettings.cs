@@ -25,6 +25,11 @@ namespace SRD.Editor
 
         public static void ForceSwitchBuildTargetIfNeeded(BuildTarget currentTarget)
         {
+#if UNITY_EDITOR_WIN
+            if(BuildPipeline.GetBuildTargetGroup(currentTarget) != BuildTargetGroup.Standalone)
+            {
+                return;
+            }
             if(currentTarget != BuildTarget.StandaloneWindows64)
             {
                 var message = "Spatial Reality Display supports Windows x64 only. Force to switch build target to Windows x64.";
@@ -38,6 +43,7 @@ namespace SRD.Editor
                     Debug.LogError(string.Format("Current BuildPlatform({0}) is NOT supported. Switch to Windows x64", currentTarget));
                 }
             }
+#endif
         }
 
         static void WaitForSwitchBuildTargetComplete()

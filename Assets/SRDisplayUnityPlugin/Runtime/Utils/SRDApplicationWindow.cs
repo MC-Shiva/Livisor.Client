@@ -18,7 +18,7 @@ namespace SRD.Utils
 #endif
         private static void FitSRDDisplay()
         {
-#if !UNITY_EDITOR
+#if !UNITY_EDITOR && UNITY_STANDALONE_WIN
             SRDSettings.LoadScreenRect();
             var position = SRDSettings.DeviceInfo.ScreenRect.Position;
             var resolution = SRDSettings.DeviceInfo.ScreenRect.Resolution;

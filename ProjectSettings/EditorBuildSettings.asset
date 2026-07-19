@@ -11,3 +11,8 @@ EditorBuildSettings:
   m_configObjects:
     com.unity.mars-ar-foundation-providers.xr_subsystem_settings: {fileID: 11400000,
       guid: 9becb2a4c15de4948a07e65d001ddbba, type: 2}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: d80f7b2e347cf432aa32a2f1a3997abc,
+      type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: c9cc1f21d89654c7087e2cb05c035927,
+      type: 2}
+  m_UseUCBPForAssetBundles: 0

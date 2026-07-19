@@ -6,6 +6,11 @@ public class StageDirector : MonoBehaviour
 {
     // Control options.
     public bool ignoreFastForward = true;
+    public bool useQuestXRWhenAvailable = true;
+    public bool forceQuestXRInEditor = false;
+    public Vector3 questXRStageOrigin = new Vector3(0.0f, 0.0f, 4.27f);
+    public Vector3 questXRStageRotation = new Vector3(0.0f, 180.0f, 0.0f);
+    public Vector3 questXRPreviewHeadPosition = new Vector3(0.0f, 1.35f, 0.0f);
 
     // Prefabs.
     public GameObject musicPlayerPrefab;
@@ -32,9 +37,22 @@ public class StageDirector : MonoBehaviour
         // Instantiate the prefabs.
         musicPlayer = (GameObject)Instantiate(musicPlayerPrefab);
 
-        var cameraRig = (GameObject)Instantiate(mainCameraRigPrefab);
-        mainCameraSwitcher = cameraRig.GetComponentInChildren<CameraSwitcher>();
-        screenOverlays = cameraRig.GetComponentsInChildren<ScreenOverlay>();
+        if (ShouldUseQuestXR())
+        {
+            DisableSRDSceneObjects();
+            QuestXRStageRig.Create(
+                questXRStageOrigin,
+                Quaternion.Euler(questXRStageRotation),
+                questXRPreviewHeadPosition);
+            mainCameraSwitcher = null;
+            screenOverlays = new ScreenOverlay[0];
+        }
+        else
+        {
+            var cameraRig = (GameObject)Instantiate(mainCameraRigPrefab);
+            mainCameraSwitcher = cameraRig.GetComponentInChildren<CameraSwitcher>();
+            screenOverlays = cameraRig.GetComponentsInChildren<ScreenOverlay>();
+        }
 
         objectsNeedsActivation = new GameObject[prefabsNeedsActivation.Length];
         for (var i = 0; i < prefabsNeedsActivation.Length; i++)
@@ -106,6 +124,34 @@ public class StageDirector : MonoBehaviour
             else
                 animator.Play(info.fullPathHash, layer, info.normalizedTime + second / info.length);
         }
+    }
+
+    bool ShouldUseQuestXR()
+    {
+#if UNITY_ANDROID
+        return useQuestXRWhenAvailable;
+#else
+        return forceQuestXRInEditor;
+#endif
+    }
+
+    void DisableSRDSceneObjects()
+    {
+        var roots = SceneManager.GetActiveScene().GetRootGameObjects();
+        foreach (var root in roots)
+            DisableSRDObjectsRecursive(root);
+    }
+
+    void DisableSRDObjectsRecursive(GameObject go)
+    {
+        if (go.name.Contains("SRDisplay"))
+        {
+            go.SetActive(false);
+            return;
+        }
+
+        foreach (Transform child in go.transform)
+            DisableSRDObjectsRecursive(child.gameObject);
     }
 
     public void EndPerformance()
