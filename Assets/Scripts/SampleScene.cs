@@ -11,7 +11,7 @@ public class SampleScene : MonoBehaviour
     {
         try
         {
-            var channel = GrpcChannelx.ForAddress("http://localhost:5136");
+            var channel = GrpcChannelx.ForAddress("http://localhost:5210");
             var client = MagicOnionClient.Create<IMyFirstService>(channel);
 
             var result = await client.SumAsync(100, 200);
