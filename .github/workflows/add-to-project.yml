@@ -1,0 +1,35 @@
+name: Add issues to project
+
+on:
+  issues:
+    types:
+      - opened
+
+# ▼▼▼ 環境に合わせて変更してください ▼▼▼
+env:
+  # Organization 名 (https://github.com/orgs/<PROJECT_OWNER>/projects/<PROJECT_NUMBER>)
+  PROJECT_OWNER: MC-Shiva
+  # Projects (v2) の番号。プロジェクトの URL 末尾の数字
+  PROJECT_NUMBER: "1"
+# ▲▲▲ 変更ここまで ▲▲▲
+
+permissions:
+  contents: read
+
+jobs:
+  add-to-project:
+    name: Add issue to project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate token
+        id: generate-token
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd # v2.0.0
+        with:
+          project-url: https://github.com/orgs/${{ env.PROJECT_OWNER }}/projects/${{ env.PROJECT_NUMBER }}
+          github-token: ${{ steps.generate-token.outputs.token }}
