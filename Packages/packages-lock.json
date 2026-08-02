@@ -7,6 +7,13 @@
       "dependencies": {},
       "hash": "ccdc8ed974f6eb8acb1c39be634f4185646e3544"
     },
+    "com.cysharp.slnmerge": {
+      "version": "https://github.com/Cysharp/SlnMerge.git?path=src",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "94a89a7299b852f7142a52e51d0c57e912218feb"
+    },
     "com.cysharp.yetanotherhttphandler": {
       "version": "https://github.com/Cysharp/YetAnotherHttpHandler.git?path=src/YetAnotherHttpHandler#1.10.0",
       "depth": 0,
