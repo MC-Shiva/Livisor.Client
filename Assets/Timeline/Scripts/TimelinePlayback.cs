@@ -4,6 +4,8 @@ using Livisor.Shared.DTO;
 /// <summary>
 /// タイムライン再生のスケジュール計算（UnityEngine 非依存・テスト可能）。
 /// 受信した配列を「先頭アクション基準の相対オフセット」に変換する。
+/// 絶対時刻方式だと、配信時に既に過ぎた time のアクションが一斉発火し、
+/// 曲のブツ切れや音量の急変が起きる。相対オフセットにして間隔を保つことでこれを防ぐ。
 /// </summary>
 public static class TimelinePlayback
 {
