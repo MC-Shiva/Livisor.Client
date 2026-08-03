@@ -53,7 +53,7 @@ public class TimelineReceiver : MonoBehaviour
             StartCoroutine(PlayTimeline(item.actions, item.broadcastAtMs));
     }
 
-    // スケジュール計算は純粋ロジックへ委譲し、ここは待機とディスパッチだけを担う。
+    // スケジュール計算は TimelinePlayback へ委譲し、ここは待機とディスパッチだけを担う。
     // broadcastAtMs を基準とした絶対 UTC 時刻で発火させ、複数受信者が同時にアクションを実行。
     private IEnumerator PlayTimeline(TimelineAction[] actions, long broadcastAtMs)
     {

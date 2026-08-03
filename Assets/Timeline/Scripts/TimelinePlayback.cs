@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Livisor.Shared.DTO;
 
 /// <summary>
-/// タイムライン再生の純粋ロジック（UnityEngine 非依存・テスト可能）。
+/// タイムライン再生のスケジュール計算（UnityEngine 非依存・テスト可能）。
 /// 受信した配列を「先頭アクション基準の相対オフセット」に変換する。
 /// </summary>
 public static class TimelinePlayback
