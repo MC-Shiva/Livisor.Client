@@ -1,3 +1,4 @@
+using Livisor.Shared.DTO;
 using UnityEngine;
 
 /// <summary>
@@ -6,9 +7,9 @@ using UnityEngine;
 /// </summary>
 public class LoggingMediaPlayer : IMediaPlayer
 {
-    public void Start(int value) => Debug.Log($"[Play] START (value={value})");
+    public void Start(ActionValue value) => Debug.Log($"[Play] START (value={value})");
 
-    public void Stop(int value) => Debug.Log($"[Play] STOP (value={value})");
+    public void Stop(ActionValue value) => Debug.Log($"[Play] STOP (value={value})");
 
-    public void ChangeVolume(int value) => Debug.Log($"[Play] VOLUME -> {value}");
+    public void ChangeVolume(ActionValue value) => Debug.Log($"[Play] VOLUME -> {value}");
 }
