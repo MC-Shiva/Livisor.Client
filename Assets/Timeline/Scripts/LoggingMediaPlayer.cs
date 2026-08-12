@@ -1,4 +1,4 @@
-using Livisor.Shared.DTO;
+using Livisor.Shared.Common;
 using UnityEngine;
 
 /// <summary>

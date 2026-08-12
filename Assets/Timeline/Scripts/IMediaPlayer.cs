@@ -1,4 +1,4 @@
-using Livisor.Shared.DTO;
+using Livisor.Shared.Common;
 
 /// <summary>
 /// タイムラインのアクションを実際の操作に落とすためのインターフェース。

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Livisor.Shared.Common;
 using Livisor.Shared.DTO;
 
 /// <summary>
@@ -43,19 +44,8 @@ public static class TimelinePlayback
 
     /// <summary>
     /// "HH:mm:ss:ff" を秒に変換する。第 4 フィールドはセンチ秒(1/100 秒)として扱う。
-    /// （フレーム単位に変えたい場合はここを調整する）
+    /// パースルールは <see cref="PlaybackTime"/>（Server と共通）に委譲する。不正な値は 0 を返す。
     /// </summary>
     public static double ParseTimeToSeconds(string time)
-    {
-        if (string.IsNullOrEmpty(time)) return 0;
-
-        var parts = time.Split(':');
-        if (parts.Length < 4) return 0;
-        if (!int.TryParse(parts[0], out var h)) return 0;
-        if (!int.TryParse(parts[1], out var m)) return 0;
-        if (!int.TryParse(parts[2], out var s)) return 0;
-        if (!int.TryParse(parts[3], out var ff)) return 0;
-
-        return h * 3600 + m * 60 + s + ff / 100.0;
-    }
+        => PlaybackTime.TryParse(time, out var t) ? t.TotalSeconds : 0;
 }
