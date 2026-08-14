@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using System.Collections;
 using UnityEngine.SceneManagement;
 
 public class StageDirector : MonoBehaviour
@@ -27,15 +26,31 @@ public class StageDirector : MonoBehaviour
 
     // Objects to be controlled.
     GameObject musicPlayer;
+    // 聞こえる Main 音源と演出解析用音源を、同じ再生位置でまとめて制御する。
+    MusicPlayerController musicPlayerController;
+    // SR Display が利用できない環境で AudioListener を補う通常カメラ。
+    Camera fallbackAudioListenerCamera;
     CameraSwitcher mainCameraSwitcher;
     ScreenOverlay[] screenOverlays;
     GameObject[] objectsNeedsActivation;
     GameObject[] objectsOnTimeline;
 
+    // timeScale と音源の停止状態を一つの状態として管理する。
+    bool isPerformancePaused;
+    // 一時停止前の再生速度を保存し、再開時に元の速度へ戻す。
+    float resumeTimeScale = 1.0f;
+
+    public bool IsPerformancePaused => isPerformancePaused;
+    public MusicPlayerController MusicPlayerController => musicPlayerController;
+
     void Awake()
     {
         // Instantiate the prefabs.
         musicPlayer = (GameObject)Instantiate(musicPlayerPrefab);
+        // シーン上の複製ではなく、MusicPlayer Prefab 内の音源を操作対象にする。
+        musicPlayerController = musicPlayer.GetComponent<MusicPlayerController>();
+        if (musicPlayerController == null)
+            Debug.LogError("MusicPlayer prefab requires MusicPlayerController.", musicPlayer);
 
         if (ShouldUseQuestXR())
         {
@@ -50,6 +65,7 @@ public class StageDirector : MonoBehaviour
         else
         {
             var cameraRig = (GameObject)Instantiate(mainCameraRigPrefab);
+            fallbackAudioListenerCamera = cameraRig.GetComponentInChildren<Camera>(true);
             mainCameraSwitcher = cameraRig.GetComponentInChildren<CameraSwitcher>();
             screenOverlays = cameraRig.GetComponentsInChildren<ScreenOverlay>();
         }
@@ -63,6 +79,15 @@ public class StageDirector : MonoBehaviour
             objectsOnTimeline[i] = (GameObject)Instantiate(prefabsOnTimeline[i]);
 
         foreach (var p in miscPrefabs) Instantiate(p);
+
+        // 最初の再生操作を受け取るまで、ライブを先頭で待機させる。
+        PausePerformance();
+    }
+
+    void Start()
+    {
+        // 全オブジェクトの Awake 後に確認し、SRDManager が自ら無効化された環境でも音を出せるようにする。
+        EnsureAudioListener();
     }
 
     void Update()
@@ -76,8 +101,54 @@ public class StageDirector : MonoBehaviour
 
     public void StartMusic()
     {
+        if (musicPlayerController != null)
+        {
+            musicPlayerController.PlayAll();
+            return;
+        }
+
+        // Prefab の設定ミスがあっても既存ライブが無音にならないためのフォールバック。
         foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
             source.Play();
+    }
+
+    /// <summary>現在位置で音楽とライブ演出を一時停止する。</summary>
+    public void PausePerformance()
+    {
+        if (isPerformancePaused)
+            return;
+
+        if (Time.timeScale > 0.0f)
+            resumeTimeScale = Time.timeScale;
+
+        // 音源は現在位置を保持して止め、演出側は timeScale でまとめて停止する。
+        musicPlayerController?.PauseAll();
+        Time.timeScale = 0.0f;
+        isPerformancePaused = true;
+    }
+
+    /// <summary>一時停止位置から音楽とライブ演出を再開する。</summary>
+    public void ResumePerformance()
+    {
+        if (!isPerformancePaused)
+            return;
+
+        // 演出と音源を同じ操作で再開し、それぞれの停止位置を維持する。
+        Time.timeScale = resumeTimeScale > 0.0f ? resumeTimeScale : 1.0f;
+        musicPlayerController?.ResumeAll();
+        isPerformancePaused = false;
+    }
+
+    /// <summary>Spectrum には触れず、聞こえる Main 音源だけを変更する。</summary>
+    public void SetMainVolume(int percent)
+    {
+        if (musicPlayerController == null)
+        {
+            Debug.LogError("MusicPlayerController is not available.", this);
+            return;
+        }
+
+        musicPlayerController.SetMainVolume(percent);
     }
 
     public void ActivateProps()
@@ -154,9 +225,41 @@ public class StageDirector : MonoBehaviour
             DisableSRDObjectsRecursive(child.gameObject);
     }
 
+    void EnsureAudioListener()
+    {
+        // 非アクティブまたは無効な Listener は、実際には音を受け取れないため対象外とする。
+        var listeners = FindObjectsByType<AudioListener>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var listener in listeners)
+        {
+            if (listener.enabled && listener.gameObject.activeInHierarchy)
+                return;
+        }
+
+        if (fallbackAudioListenerCamera == null)
+        {
+            Debug.LogError("No active AudioListener or fallback camera is available.", this);
+            return;
+        }
+
+        // SR Display や Quest 側に有効な Listener がない場合だけ、通常カメラで補完する。
+        var fallbackListener = fallbackAudioListenerCamera.GetComponent<AudioListener>();
+        if (fallbackListener == null)
+            fallbackListener = fallbackAudioListenerCamera.gameObject.AddComponent<AudioListener>();
+
+        fallbackListener.enabled = true;
+        Debug.Log("AudioListener was added to the fallback Main Camera.", fallbackAudioListenerCamera);
+    }
+
     public void EndPerformance()
     {
-        //Application.LoadLevel(0);
-        SceneManager.LoadScene(0);
+        // 今回はシーンを自動リロードせず、最終位置で停止する。
+        PausePerformance();
+    }
+
+    void OnDestroy()
+    {
+        // Play Mode 終了や別シーンへの遷移後にグローバルな timeScale を残さない。
+        if (isPerformancePaused)
+            Time.timeScale = resumeTimeScale > 0.0f ? resumeTimeScale : 1.0f;
     }
 }

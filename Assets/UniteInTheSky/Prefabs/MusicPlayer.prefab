@@ -8,6 +8,7 @@ GameObject:
   serializedVersion: 4
   m_Component:
   - 4: {fileID: 400000}
+  - 114: {fileID: 11400024}
   m_Layer: 0
   m_Name: MusicPlayer
   m_TagString: Untagged
@@ -894,6 +895,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mute: 1
+--- !u!114 &11400024
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f4d8c5f27c74d58a959ecbe7649a1e3, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  _mainSource: {fileID: 8200006}
+  _analysisSources:
+  - {fileID: 8200002}
+  - {fileID: 8200000}
+  - {fileID: 8200008}
+  - {fileID: 8200004}
 --- !u!1001 &100100000
 Prefab:
   m_ObjectHideFlags: 1
