@@ -50,9 +50,9 @@ public class SampleTimeline : MonoBehaviour
     // ※ 動作確認では待ち時間が長くならないよう time を短く調整してよい。
     private static TimelineAction[] BuildTimeline() => new[]
     {
-        new TimelineAction { Time = "10:00:00:00", Action = ActionType.Start, Value = 1 },
+        new TimelineAction { Time = "10:00:00:00", Action = ActionType.Play, Value = true },
         new TimelineAction { Time = "10:00:03:00", Action = ActionType.VolumeChange, Value = 10 },
-        new TimelineAction { Time = "10:00:06:00", Action = ActionType.Stop, Value = 1 },
+        new TimelineAction { Time = "10:00:06:00", Action = ActionType.Play, Value = false },
     };
 
     async void OnDestroy()
