@@ -1,0 +1,24 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="root">
+        <ui:VisualElement name="connection-panel">
+            <ui:Label text="サーバー" class="field-label" />
+            <ui:TextField name="server-address" />
+            <ui:Label text="ルームID" class="field-label" />
+            <ui:TextField name="room-id" />
+            <ui:Button name="connect-button" text="接続" />
+            <ui:Label name="connection-status" text="未接続" />
+        </ui:VisualElement>
+        <ui:VisualElement name="timeline-panel">
+            <ui:VisualElement name="timeline-header">
+                <ui:Label text="時刻（時:分:秒:センチ秒）" class="header-time" />
+                <ui:Label text="カテゴリ" class="header-action" />
+                <ui:Label text="値" class="header-value" />
+            </ui:VisualElement>
+            <ui:ListView name="timeline-list" />
+        </ui:VisualElement>
+        <ui:VisualElement name="footer">
+            <ui:Button name="broadcast-button" text="Broadcast" />
+            <ui:Label name="status-label" text="" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
