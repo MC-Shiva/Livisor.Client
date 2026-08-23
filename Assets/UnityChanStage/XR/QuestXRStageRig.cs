@@ -21,7 +21,8 @@ public static class QuestXRStageRig
         camera.backgroundColor = Color.black;
         camera.nearClipPlane = 0.05f;
         camera.farClipPlane = 200.0f;
-        camera.stereoTargetEye = StereoTargetEyeMask.Both;
+        //Build in専用APIのためコメントアウト
+        //camera.stereoTargetEye = StereoTargetEyeMask.Both;
 
         cameraObject.AddComponent<AudioListener>();
 
