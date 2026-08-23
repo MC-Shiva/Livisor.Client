@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="timeline-row" class="timeline-row timeline-item">
+        <ui:VisualElement name="time-badge" class="time-input">
+            <ui:IntegerField name="hours-field" class="time-part-field"/>
+            <ui:Label text=":" class="time-separator"/>
+            <ui:IntegerField name="minutes-field" class="time-part-field"/>
+            <ui:Label text=":" class="time-separator"/>
+            <ui:IntegerField name="seconds-field" class="time-part-field"/>
+            <ui:Label text=":" class="time-separator"/>
+            <ui:IntegerField name="centiseconds-field" class="time-part-field"/>
+        </ui:VisualElement>
+        <ui:DropdownField name="action-dropdown" class="action-dropdown category-field"/>
+        <ui:IntegerField name="number-field" class="value-field"/>
+        <ui:Toggle name="bool-field" class="value-field"/>
+        <ui:TextField name="text-field" class="value-field"/>
+        <ui:Button name="remove-button" text="&#215;" class="remove-button"/>
+    </ui:VisualElement>
+</ui:UXML>

@@ -245,6 +245,10 @@ MonoBehaviour:
   _roomId: room1
   _styleSheet: {fileID: 7433441132597879392, guid: f5662c63c82264a48b45b38ffa7de6f6,
     type: 3}
+  _timelineRowTemplate: {fileID: 9197481963319205126, guid: b1fd307a839448de9278b6a5c7f34300,
+    type: 3}
+  _timelineFooterTemplate: {fileID: 9197481963319205126, guid: 2bf226a62c4a4601a7981b04f7c7d3d7,
+    type: 3}
 --- !u!114 &1025053293
 MonoBehaviour:
   m_ObjectHideFlags: 0
