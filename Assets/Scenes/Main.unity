@@ -434,8 +434,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ignoreFastForward: 1
-  useQuestXRWhenAvailable: 1
-  forceQuestXRInEditor: 0
+  useDirectorCameraInEditor: 0
   questXRStageOrigin: {x: 0, y: 0, z: 4.27}
   questXRStageRotation: {x: 0, y: 180, z: 0}
   questXRPreviewHeadPosition: {x: 0, y: 1.35, z: 0}
