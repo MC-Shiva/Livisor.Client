@@ -74,11 +74,11 @@ public class TimelineReceiver : MonoBehaviour
     {
         switch (action.Action)
         {
-            case ActionType.Start:
-                _player.Start(action.Value);
-                break;
-            case ActionType.Stop:
-                _player.Stop(action.Value);
+            case ActionType.Play:
+                if (action.Value.Bool)
+                    _player.Start(action.Value);
+                else
+                    _player.Stop(action.Value);
                 break;
             case ActionType.VolumeChange:
                 _player.ChangeVolume(action.Value);
