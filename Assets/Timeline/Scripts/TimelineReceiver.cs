@@ -74,11 +74,15 @@ public class TimelineReceiver : MonoBehaviour
     {
         switch (action.Action)
         {
-            case ActionType.Start:
-                _player.Start(action.Value);
-                break;
-            case ActionType.Stop:
-                _player.Stop(action.Value);
+            case ActionType.Play:
+                // play は true=再生 / false=停止。bool 以外が来ると Value.Bool が既定値 false になり
+                // 「再生のつもりが停止」になるため、種別を確かめてから渡す。
+                if (action.Value.Kind != ActionValueKind.Bool)
+                {
+                    Debug.LogWarning($"[Receiver] play の値が bool ではないため無視する (Kind={action.Value.Kind})");
+                    break;
+                }
+                _player.Play(action.Value.Bool);
                 break;
             case ActionType.VolumeChange:
                 _player.ChangeVolume(action.Value);
