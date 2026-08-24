@@ -1,0 +1,34 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/Admin/UI/AdminConsole.uss?fileID=7433441132597879392&amp;guid=f5662c63c82264a48b45b38ffa7de6f6&amp;type=3#AdminConsole"/>
+    <ui:VisualElement name="root" class="root">
+        <ui:VisualElement name="console-title-row" class="console-title-row">
+            <ui:VisualElement name="status-dot-wrap" class="status-dot-wrap">
+                <ui:VisualElement name="status-dot-glow" class="status-dot-glow"/>
+                <ui:VisualElement name="status-dot" class="status-dot"/>
+            </ui:VisualElement>
+            <ui:Label text="Livisor Console" class="console-title" style="-unity-font-definition: url(&quot;project://database/Assets/Admin/UI/Fonts/NotoSansJP-VF.ttf?fileID=12800000&amp;guid=0927d4ff5e8b748d38a84be2c6f84788&amp;type=3#NotoSansJP-VF&quot;);"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="connection-panel" class="panel">
+            <ui:Label text="Connection" class="field-label"/>
+            <ui:Label text="ServerAddress" class="field-label"/>
+            <ui:TextField name="server-address" class="console-input"/>
+            <ui:Label text="roomID" class="field-label"/>
+            <ui:TextField name="room-id" class="console-input"/>
+            <ui:Button name="connect-button" text="CONNECT" class="connect-button"/>
+            <ui:Label name="connection-status" text="Not Connected" class="status-label"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="timeline-panel" class="panel timeline-panel">
+            <ui:VisualElement name="timeline-header" class="timeline-row timeline-header">
+                <ui:Label text="TIME (H:M:S:CS)" class="header-time"/>
+                <ui:Label text="CATEGORY" class="header-action"/>
+                <ui:Label text="VALUE" class="header-value"/>
+            </ui:VisualElement>
+            <ui:ListView name="timeline-list" class="timeline-list"/>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="footer" class="panel footer">
+            <ui:Button name="broadcast-button" text="Broadcast" class="action-button broadcast-button"/>
+            <ui:Label name="status-label" text="" class="status-label"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
