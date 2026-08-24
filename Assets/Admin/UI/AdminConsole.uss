@@ -153,6 +153,28 @@
             0 0 24px 8px rgba(66, 232, 210, 0.25);
 }
 
+/* 未接続/接続中: 点灯を落として控えめにする */
+.status-dot--offline {
+    background-color: var(--color-text-faint);
+    box-shadow: none;
+}
+
+/* 接続失敗: 赤で警告する */
+.status-dot--error {
+    background-color: var(--color-danger);
+    box-shadow:
+            0 0 4px 1px rgba(255, 92, 108, 0.9),
+            0 0 12px 4px rgba(255, 92, 108, 0.5);
+}
+
+.status-dot-glow--offline {
+    -unity-background-image-tint-color: var(--color-text-faint);
+}
+
+.status-dot-glow--error {
+    -unity-background-image-tint-color: var(--color-danger);
+}
+
 .console-title {
     background-color: rgba(76, 76, 76, 0);
     -unity-font-definition: url("project://database/Assets/Admin/UI/Fonts/NotoSansJP-VF SDF.asset?fileID=11400000&guid=23a888d7db5cb433cb13644614e6b609&type=2#NotoSansJP-VF SDF");

@@ -2,14 +2,15 @@ using Livisor.Shared.Common;
 
 /// <summary>
 /// ActionType ごとに入力すべき ActionValue の種類（Number / Bool / Text）を固定するマップ。
-/// ActionType が増えたときはここに 1 行追加する。
 /// </summary>
+/// <remarks>
+/// Server 側でも検証したくなった場合は Livisor.Shared へ移す。
+/// </remarks>
 public static class ActionValueKindMap
 {
     public static ActionValueKind KindOf(ActionType action) => action switch
     {
-        ActionType.Start => ActionValueKind.Number,
-        ActionType.Stop => ActionValueKind.Number,
+        ActionType.Play => ActionValueKind.Bool,
         ActionType.VolumeChange => ActionValueKind.Number,
         _ => ActionValueKind.Number,
     };

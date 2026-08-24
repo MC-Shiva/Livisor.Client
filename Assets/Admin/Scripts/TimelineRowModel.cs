@@ -11,7 +11,7 @@ public class TimelineRowModel
     public int Seconds;
     public int Centiseconds;
 
-    public ActionType Action = ActionType.Start;
+    public ActionType Action = ActionType.Play;
     public string NumberText = "0";
     public bool BoolValue;
     public string TextValue = string.Empty;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -25,11 +26,14 @@ public class AdminConsoleView : MonoBehaviour
 
     private ITimelinePublisher _client;
     private TimelineListController _timelineController;
+    private ConnectionState _state = ConnectionState.Disconnected;
 
     private TextField _serverAddressField;
     private TextField _roomIdField;
     private Button _connectButton;
     private Label _connectionStatusLabel;
+    private VisualElement _statusDot;
+    private VisualElement _statusDotGlow;
     private ListView _timelineList;
     private Button _broadcastButton;
     private Label _statusLabel;
@@ -53,6 +57,8 @@ public class AdminConsoleView : MonoBehaviour
         _roomIdField = root.Q<TextField>("room-id");
         _connectButton = root.Q<Button>("connect-button");
         _connectionStatusLabel = root.Q<Label>("connection-status");
+        _statusDot = root.Q<VisualElement>("status-dot");
+        _statusDotGlow = root.Q<VisualElement>("status-dot-glow");
         _timelineList = root.Q<ListView>("timeline-list");
         _broadcastButton = root.Q<Button>("broadcast-button");
         _statusLabel = root.Q<Label>("status-label");
@@ -69,16 +75,17 @@ public class AdminConsoleView : MonoBehaviour
         _connectButton.clicked += OnConnectClicked;
         _broadcastButton.clicked += OnBroadcastClicked;
 
-        _broadcastButton.SetEnabled(false);
-        SetConnectionStatus("Not Connected");
+        SetState(ConnectionState.Disconnected);
         SetStatus(string.Empty);
     }
 
     /// <summary>OnEnable で購読したイベントを解除する。再有効化時に OnEnable が再購読するため、多重購読を防ぐ。</summary>
     private void OnDisable()
     {
-        _connectButton.clicked -= OnConnectClicked;
-        _broadcastButton.clicked -= OnBroadcastClicked;
+        if (_connectButton != null)
+            _connectButton.clicked -= OnConnectClicked;
+        if (_broadcastButton != null)
+            _broadcastButton.clicked -= OnBroadcastClicked;
     }
 
     /// <summary>破棄時に接続中の Hub クライアントを DisposeAsync で確実に切断する。</summary>
@@ -92,14 +99,43 @@ public class AdminConsoleView : MonoBehaviour
     }
 
     /// <summary>
-    /// 接続ボタン押下時の処理。再接続時に古い接続が残らないよう、既存クライアントがあれば
-    /// 先に DisposeAsync してから新規接続する。
+    /// 接続ボタン押下時の処理。接続済みなら切断、それ以外は接続を試みる。
     /// </summary>
     private async void OnConnectClicked()
     {
-        _connectButton.SetEnabled(false);
-        _broadcastButton.SetEnabled(false);
-        SetConnectionStatus("接続中...");
+        if (_state == ConnectionState.Connected)
+        {
+            await DisconnectAsync();
+            return;
+        }
+
+        await ConnectAsync();
+    }
+
+    /// <summary>
+    /// サーバへ接続する。再接続時に古い接続が残らないよう、既存クライアントがあれば
+    /// 先に DisposeAsync してから新規接続する。接続に失敗した場合は確立しかけたクライアントも
+    /// DisposeAsync で破棄し、Broadcast の null ガードが正しく効く状態に戻す。
+    /// </summary>
+    private async Task ConnectAsync()
+    {
+        var serverAddress = _serverAddressField.value?.Trim();
+        var roomId = _roomIdField.value?.Trim();
+
+        if (string.IsNullOrEmpty(serverAddress))
+        {
+            SetStatus("ServerAddress を入力してください。");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(roomId))
+        {
+            SetStatus("roomID を入力してください。");
+            return;
+        }
+
+        SetState(ConnectionState.Connecting);
+        SetStatus(string.Empty);
 
         try
         {
@@ -108,21 +144,37 @@ public class AdminConsoleView : MonoBehaviour
 
             var hubClient = new TimelineHubClient();
             _client = hubClient;
-            await hubClient.ConnectAsync(_serverAddressField.value, _roomIdField.value);
+            await hubClient.ConnectAsync(serverAddress, roomId);
 
-            SetConnectionStatus($"接続済み（room: {_roomIdField.value}）");
-            _broadcastButton.SetEnabled(true);
+            SetState(ConnectionState.Connected, $"接続済み（room: {roomId}）");
         }
         catch (Exception e)
         {
-            SetConnectionStatus("接続失敗");
+            if (_client != null)
+            {
+                await _client.DisposeAsync();
+                _client = null;
+            }
+
+            SetState(ConnectionState.Failed, "接続失敗");
             SetStatus(e.Message);
             Debug.LogException(e);
         }
-        finally
+    }
+
+    /// <summary>サーバから切断する。切断処理中の連打を防ぐため、完了までボタンを無効化する。</summary>
+    private async Task DisconnectAsync()
+    {
+        _connectButton.SetEnabled(false);
+
+        if (_client != null)
         {
-            _connectButton.SetEnabled(true);
+            await _client.DisposeAsync();
+            _client = null;
         }
+
+        SetState(ConnectionState.Disconnected, "Not Connected");
+        SetStatus(string.Empty);
     }
 
     /// <summary>
@@ -161,7 +213,41 @@ public class AdminConsoleView : MonoBehaviour
         }
     }
 
-    private void SetConnectionStatus(string text) => _connectionStatusLabel.text = text;
+    /// <summary>
+    /// 接続状態を切り替える。CONNECT/DISCONNECT ボタンの表示・enabled、Broadcast ボタンの enabled、
+    /// connection-status ラベルと status-dot の見た目をここに集約する。
+    /// </summary>
+    /// <param name="state">遷移先の状態。</param>
+    /// <param name="connectionStatusText">connection-status ラベルの文言。省略時は状態ごとの既定文言を使う。</param>
+    private void SetState(ConnectionState state, string connectionStatusText = null)
+    {
+        _state = state;
+
+        _connectButton.text = state switch
+        {
+            ConnectionState.Connecting => "CONNECTING...",
+            ConnectionState.Connected => "DISCONNECT",
+            _ => "CONNECT",
+        };
+        _connectButton.SetEnabled(state != ConnectionState.Connecting);
+        _broadcastButton.SetEnabled(state == ConnectionState.Connected);
+
+        connectionStatusText ??= state switch
+        {
+            ConnectionState.Connecting => "接続中...",
+            ConnectionState.Failed => "接続失敗",
+            _ => "Not Connected",
+        };
+        _connectionStatusLabel.text = connectionStatusText;
+        _connectionStatusLabel.EnableInClassList("status-live", state == ConnectionState.Connected);
+        _connectionStatusLabel.EnableInClassList("status-error", state == ConnectionState.Failed);
+
+        var isOffline = state != ConnectionState.Connected;
+        _statusDot?.EnableInClassList("status-dot--offline", isOffline && state != ConnectionState.Failed);
+        _statusDot?.EnableInClassList("status-dot--error", state == ConnectionState.Failed);
+        _statusDotGlow?.EnableInClassList("status-dot-glow--offline", isOffline && state != ConnectionState.Failed);
+        _statusDotGlow?.EnableInClassList("status-dot-glow--error", state == ConnectionState.Failed);
+    }
 
     private void SetStatus(string text) => _statusLabel.text = text;
 }
