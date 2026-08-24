@@ -122,6 +122,21 @@
      scale: 0.98 0.98;
  }
 
+ .stop-button {
+     background-color: transparent;
+     border-color: var(--color-danger);
+     color: var(--color-danger);
+ }
+
+ .stop-button:hover {
+     background-color: rgba(255, 92, 108, 0.12);
+ }
+
+ .stop-button:active {
+     background-color: rgba(255, 92, 108, 0.24);
+     scale: 0.98 0.98;
+ }
+
 .status-dot-wrap {
     position: relative;
     width: 58px;
@@ -288,6 +303,12 @@
  .timeline-item--cue-1 { border-left-color: var(--color-cue-pink); }
  .timeline-item--cue-2 { border-left-color: var(--color-cue-orange); }
 
+ /* 配信中に発火済みの行を強調する。--cue-* より後に書いて上書きする。 */
+ .timeline-item--active {
+     background-color: var(--color-bg-panel);
+     border-left-color: var(--color-accent);
+ }
+
  .time-input {
      width: 140px;
      flex-direction: row;
@@ -376,6 +397,11 @@
      flex-direction: row;
      align-items: center;
      justify-content: space-between;
+ }
+
+ .broadcast-controls {
+     flex-direction: row;
+     align-items: center;
  }
 
  .status-label {

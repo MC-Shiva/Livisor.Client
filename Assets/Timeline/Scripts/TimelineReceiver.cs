@@ -23,6 +23,10 @@ public class TimelineReceiver : MonoBehaviour
     // 受信したタイムラインをメインスレッドで順に再生するためのキュー。broadcastAtMs は絶対時間再生の基準。
     private readonly ConcurrentQueue<(TimelineAction[] actions, long broadcastAtMs)> _pendingQueue = new();
 
+    // 再生中のコルーチン。Broadcast は「今の演目を丸ごと差し替える」イベント（Server.Domain.Entity.Room 参照）
+    // のため、新しいタイムラインを受け取ったら古いスケジュールは即座に破棄し、二重発火を防ぐ。
+    private Coroutine _playing;
+
     async void Start()
     {
         // 一旦仮でLoggingのみ
@@ -51,7 +55,13 @@ public class TimelineReceiver : MonoBehaviour
     void Update()
     {
         while (_pendingQueue.TryDequeue(out var item))
-            StartCoroutine(PlayTimeline(item.actions, item.broadcastAtMs));
+        {
+            // 新しいタイムラインが届いたら、進行中の古いスケジュールを止めてから差し替える。
+            if (_playing != null)
+                StopCoroutine(_playing);
+
+            _playing = StartCoroutine(PlayTimeline(item.actions, item.broadcastAtMs));
+        }
     }
 
     // スケジュール計算は TimelinePlayback へ委譲し、ここは待機とディスパッチだけを担う。
@@ -68,6 +78,8 @@ public class TimelineReceiver : MonoBehaviour
 
             Dispatch(scheduled.Action);
         }
+
+        _playing = null;
     }
 
     private void Dispatch(TimelineAction action)

@@ -27,6 +27,8 @@ public class AdminConsoleView : MonoBehaviour
     private ITimelinePublisher _client;
     private TimelineListController _timelineController;
     private ConnectionState _state = ConnectionState.Disconnected;
+    private BroadcastState _broadcastState = BroadcastState.Idle;
+    private BroadcastSession _session;
 
     private TextField _serverAddressField;
     private TextField _roomIdField;
@@ -36,6 +38,7 @@ public class AdminConsoleView : MonoBehaviour
     private VisualElement _statusDotGlow;
     private ListView _timelineList;
     private Button _broadcastButton;
+    private Button _stopButton;
     private Label _statusLabel;
 
     /// <summary>
@@ -61,6 +64,7 @@ public class AdminConsoleView : MonoBehaviour
         _statusDotGlow = root.Q<VisualElement>("status-dot-glow");
         _timelineList = root.Q<ListView>("timeline-list");
         _broadcastButton = root.Q<Button>("broadcast-button");
+        _stopButton = root.Q<Button>("stop-button");
         _statusLabel = root.Q<Label>("status-label");
 
         _serverAddressField.value = _serverConfig != null ? _serverConfig.ServerAddress : string.Empty;
@@ -74,7 +78,9 @@ public class AdminConsoleView : MonoBehaviour
 
         _connectButton.clicked += OnConnectClicked;
         _broadcastButton.clicked += OnBroadcastClicked;
+        _stopButton.clicked += OnStopClicked;
 
+        // SetState(Disconnected) は Connected 以外への遷移として配信状態も Idle へ戻す。
         SetState(ConnectionState.Disconnected);
         SetStatus(string.Empty);
     }
@@ -86,6 +92,37 @@ public class AdminConsoleView : MonoBehaviour
             _connectButton.clicked -= OnConnectClicked;
         if (_broadcastButton != null)
             _broadcastButton.clicked -= OnBroadcastClicked;
+        if (_stopButton != null)
+            _stopButton.clicked -= OnStopClicked;
+    }
+
+    /// <summary>
+    /// 配信中（<see cref="BroadcastState.Broadcasting"/>）の間、進行状況を毎フレーム反映する。
+    /// 基準時刻はこのクライアントの UtcNow であり、Server が打つ broadcastAtMs とは別クロックのため、
+    /// あくまで Admin 画面の表示用の目安（受信側の実発火タイミングを保証するものではない）。
+    /// </summary>
+    private void Update()
+    {
+        if (_broadcastState != BroadcastState.Broadcasting || _session == null)
+            return;
+
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        if (_session.IsFinished(nowMs))
+        {
+            SetBroadcastState(BroadcastState.Idle);
+            SetStatus("配信完了");
+            return;
+        }
+
+        _timelineController.SetActiveIndex(_session.ActiveIndex(nowMs));
+        SetStatus($"配信中 {FormatSeconds(_session.ElapsedSeconds(nowMs))} / {FormatSeconds(_session.TotalSeconds)}");
+    }
+
+    private static string FormatSeconds(double seconds)
+    {
+        var span = TimeSpan.FromSeconds(seconds);
+        return $"{(int)span.TotalMinutes:D2}:{span.Seconds:D2}";
     }
 
     /// <summary>破棄時に接続中の Hub クライアントを DisposeAsync で確実に切断する。</summary>
@@ -179,6 +216,7 @@ public class AdminConsoleView : MonoBehaviour
 
     /// <summary>
     /// Broadcast ボタン押下時の処理。<see cref="TimelineDraft.TryBuild"/> で行データを検証・変換してから送信する。
+    /// 送信成功後は <see cref="BroadcastSession"/> を組み、進行状況の表示を開始する。
     /// </summary>
     private async void OnBroadcastClicked()
     {
@@ -200,22 +238,50 @@ public class AdminConsoleView : MonoBehaviour
         try
         {
             await _client.BroadcastAsync(actions);
-            SetStatus($"送信しました（{actions.Length} 件）。");
+
+            // 表示用の目安として、送信直後のこのクライアントの時刻を基準にする。
+            // Server が全受信者へ打つ broadcastAtMs とは別クロックのため、実発火タイミングの保証ではない。
+            var broadcastAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            _session = new BroadcastSession(actions, broadcastAtMs);
+            SetBroadcastState(BroadcastState.Broadcasting);
         }
         catch (Exception e)
         {
             SetStatus($"送信に失敗しました: {e.Message}");
             Debug.LogException(e);
-        }
-        finally
-        {
-            _broadcastButton.SetEnabled(true);
+            UpdateActionButtons();
         }
     }
 
     /// <summary>
-    /// 接続状態を切り替える。CONNECT/DISCONNECT ボタンの表示・enabled、Broadcast ボタンの enabled、
+    /// STOP ボタン押下時の処理。<see cref="TimelineDraft.BuildStopActions"/> の単発タイムライン
+    /// （play: false）を配信することで、受信側の進行中スケジュールを破棄させたうえで停止させる。
+    /// </summary>
+    private async void OnStopClicked()
+    {
+        if (_client == null)
+            return;
+
+        _stopButton.SetEnabled(false);
+
+        try
+        {
+            await _client.BroadcastAsync(TimelineDraft.BuildStopActions());
+            SetBroadcastState(BroadcastState.Idle);
+            SetStatus("配信を停止しました。");
+        }
+        catch (Exception e)
+        {
+            SetStatus($"停止に失敗しました: {e.Message}");
+            Debug.LogException(e);
+            UpdateActionButtons();
+        }
+    }
+
+    /// <summary>
+    /// 接続状態を切り替える。CONNECT/DISCONNECT ボタンの表示・enabled、
     /// connection-status ラベルと status-dot の見た目をここに集約する。
+    /// Connected 以外へ遷移するときは配信状態も Idle へ戻す（接続が切れた配信は続けられないため）。
     /// </summary>
     /// <param name="state">遷移先の状態。</param>
     /// <param name="connectionStatusText">connection-status ラベルの文言。省略時は状態ごとの既定文言を使う。</param>
@@ -230,7 +296,6 @@ public class AdminConsoleView : MonoBehaviour
             _ => "CONNECT",
         };
         _connectButton.SetEnabled(state != ConnectionState.Connecting);
-        _broadcastButton.SetEnabled(state == ConnectionState.Connected);
 
         connectionStatusText ??= state switch
         {
@@ -247,6 +312,38 @@ public class AdminConsoleView : MonoBehaviour
         _statusDot?.EnableInClassList("status-dot--error", state == ConnectionState.Failed);
         _statusDotGlow?.EnableInClassList("status-dot-glow--offline", isOffline && state != ConnectionState.Failed);
         _statusDotGlow?.EnableInClassList("status-dot-glow--error", state == ConnectionState.Failed);
+
+        if (state != ConnectionState.Connected)
+            SetBroadcastState(BroadcastState.Idle);
+        else
+            UpdateActionButtons();
+    }
+
+    /// <summary>
+    /// 配信状態を切り替える。Idle に戻るときはセッションを破棄し、行のハイライトも消す。
+    /// status-label の配信中表示（status-live）と Broadcast/STOP ボタンの enabled をここに集約する。
+    /// </summary>
+    private void SetBroadcastState(BroadcastState state)
+    {
+        _broadcastState = state;
+
+        if (state == BroadcastState.Idle)
+        {
+            _session = null;
+            _timelineController?.SetActiveIndex(-1);
+        }
+
+        _statusLabel.EnableInClassList("status-live", state == BroadcastState.Broadcasting);
+
+        UpdateActionButtons();
+    }
+
+    /// <summary>Broadcast/STOP ボタンの enabled を、接続状態と配信状態の組み合わせから決める。</summary>
+    private void UpdateActionButtons()
+    {
+        var connected = _state == ConnectionState.Connected;
+        _broadcastButton.SetEnabled(connected && _broadcastState == BroadcastState.Idle);
+        _stopButton.SetEnabled(connected && _broadcastState == BroadcastState.Broadcasting);
     }
 
     private void SetStatus(string text) => _statusLabel.text = text;

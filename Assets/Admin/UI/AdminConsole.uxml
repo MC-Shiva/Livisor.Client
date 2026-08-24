@@ -27,7 +27,10 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="footer" class="panel footer">
-            <ui:Button name="broadcast-button" text="Broadcast" class="action-button broadcast-button"/>
+            <ui:VisualElement name="broadcast-controls" class="broadcast-controls">
+                <ui:Button name="broadcast-button" text="Broadcast" class="action-button broadcast-button"/>
+                <ui:Button name="stop-button" text="STOP" class="action-button stop-button"/>
+            </ui:VisualElement>
             <ui:Label name="status-label" text="" class="status-label"/>
         </ui:VisualElement>
     </ui:VisualElement>
