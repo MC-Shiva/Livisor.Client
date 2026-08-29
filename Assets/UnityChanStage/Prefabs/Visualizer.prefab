@@ -112,12 +112,12 @@ MonoBehaviour:
   spectrum2:
     _mode: 3
     _reference: {fileID: 0}
-    _name: Specturm 2
+    _name: Spectrum 2
     _forceUpdate: 1
   spectrum3:
     _mode: 3
     _reference: {fileID: 0}
-    _name: Specturm 3
+    _name: Spectrum 3
     _forceUpdate: 1
   spectrum4:
     _mode: 3
