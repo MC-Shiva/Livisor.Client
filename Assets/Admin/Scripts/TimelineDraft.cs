@@ -60,6 +60,21 @@ public static class TimelineDraft
         return true;
     }
 
+    /// <summary>
+    /// 配信停止用の単発タイムラインを組む。play: false を単独で配信することで、
+    /// Server 側の「Broadcast は今の演目を丸ごと差し替える」セマンティクスに乗せ、
+    /// 受信側で進行中のスケジュールを破棄させたうえで停止させる。
+    /// </summary>
+    public static TimelineAction[] BuildStopActions() => new[]
+    {
+        new TimelineAction
+        {
+            Time = "00:00:00:00",
+            Action = ActionType.Play,
+            Value = ActionValue.From(false),
+        },
+    };
+
     private static bool TryBuildValue(TimelineRowModel row, int rowNumber, out ActionValue value, out string error)
     {
         value = default;

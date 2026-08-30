@@ -24,6 +24,9 @@ public class TimelineListController
     private readonly VisualTreeAsset _rowTemplate;
     private readonly VisualTreeAsset _footerTemplate;
 
+    // 配信中に発火済みの行の index。未配信・未発火なら -1。
+    private int _activeIndex = -1;
+
     public TimelineListController(ListView listView, List<TimelineRowModel> rows, VisualTreeAsset rowTemplate, VisualTreeAsset footerTemplate)
     {
         _listView = listView;
@@ -41,6 +44,19 @@ public class TimelineListController
         _listView.makeItem = CreateRowElement;
         _listView.bindItem = ApplyRowData;
         _listView.makeFooter = CreateFooterElement;
+    }
+
+    /// <summary>
+    /// 配信中に発火済みの行の index を切り替え、ハイライト表示に反映する。
+    /// 値が変わらないときは RefreshItems を呼ばない（毎フレーム呼ぶと入力欄のフォーカスが飛ぶため）。
+    /// </summary>
+    public void SetActiveIndex(int index)
+    {
+        if (_activeIndex == index)
+            return;
+
+        _activeIndex = index;
+        _listView.RefreshItems();
     }
 
     /// <summary>
@@ -153,6 +169,8 @@ public class TimelineListController
             element.RemoveFromClassList(cueClass);
         if (index >= 0)
             element.AddToClassList(CueAccentClasses[index % CueAccentClasses.Length]);
+
+        element.EnableInClassList("timeline-item--active", index == _activeIndex);
 
         if (index < 0 || index >= _rows.Count)
             return;
