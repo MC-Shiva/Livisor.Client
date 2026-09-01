@@ -62,8 +62,12 @@ public class StageDirector : MonoBehaviour
         // Stage, camera, and all miscellaneous prefabs now have their final hierarchy.
         // Initialize penlights last so their world-space positions and bounds are baked
         // from the explicit placement transform.
+        var penlightAudioSource = new ReaktionPenlightAudioSource(musicPlayer);
         foreach (var audiencePenlight in audiencePenlights)
+        {
+            audiencePenlight.SetAudioSource(penlightAudioSource);
             audiencePenlight.InitializeAt(audiencePenlightPlacement);
+        }
     }
 
     void Update()

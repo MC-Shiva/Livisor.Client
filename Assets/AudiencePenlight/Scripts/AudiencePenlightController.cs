@@ -7,6 +7,7 @@ using UnityEngine.Rendering;
 
 namespace Livisor.Live.Penlights
 {
+    [DefaultExecutionOrder(100)]
     [DisallowMultipleComponent]
     public sealed class AudiencePenlightController : MonoBehaviour
     {
@@ -46,8 +47,12 @@ namespace Livisor.Live.Penlights
         int _instanceCount;
         bool _initialized;
         bool _rebuildRequested;
+        bool _missingAudioSourceWarningIssued;
+        float _smoothedAudioLevel;
+        float _nextAudioColorUpdateTime;
         Matrix4x4 _placementMatrix;
         IPenlightTimeSource _timeSource;
+        IPenlightAudioSource _audioSource;
 
         public int InstanceCount => _instanceCount;
         public bool IsInitialized => _initialized;
@@ -97,6 +102,8 @@ namespace Livisor.Live.Penlights
             if (_instanceCount == 0 || _material == null || _runtimeMesh == null)
                 return;
 
+            UpdateAudioReactiveAppearance();
+
             var showTime = (float)(_timeSource?.CurrentTime ?? Time.timeAsDouble);
             var job = new PenlightAnimationJob
             {
@@ -125,6 +132,12 @@ namespace Livisor.Live.Penlights
         public void SetTimeSource(IPenlightTimeSource timeSource)
         {
             _timeSource = timeSource ?? new LocalPenlightTimeSource();
+        }
+
+        public void SetAudioSource(IPenlightAudioSource audioSource)
+        {
+            _audioSource = audioSource;
+            _missingAudioSourceWarningIssued = false;
         }
 
         /// <summary>
@@ -160,7 +173,8 @@ namespace Livisor.Live.Penlights
                 RebuildAudience();
                 Debug.Log(
                     $"Audience penlights initialized at '{placementTransform?.name ?? "prefab transform"}'. " +
-                    $"Instances: {_instanceCount}, Bounds: {_worldBounds}",
+                    $"Instances: {_instanceCount}, Bounds: {_worldBounds}, " +
+                    $"Audio: {_audioSource?.Description ?? "not assigned"}",
                     this);
             }
             else
@@ -243,7 +257,9 @@ namespace Livisor.Live.Penlights
 
             _materialProperties = new MaterialPropertyBlock();
             _materialProperties.SetBuffer(InstanceColorBufferId, _colorBuffer);
-            _materialProperties.SetFloat(EmissionIntensityId, _appearance.emissionIntensity);
+            SetEmissionIntensity(_smoothedAudioLevel);
+
+            _nextAudioColorUpdateTime = 0.0f;
 
             _runtimeMesh = CreateCylinderMesh(8, 0.012f, 0.18f);
             CalculateWorldBounds(positions);
@@ -255,9 +271,13 @@ namespace Livisor.Live.Penlights
             for (var i = 0; i < _instanceCount; i++)
             {
                 Color color;
-                if (!_appearance.randomColorEnabled)
+                if (_appearance.colorMode == PenlightColorMode.Fixed)
                 {
                     color = _appearance.baseColor;
+                }
+                else if (_appearance.colorMode == PenlightColorMode.AudioReactive)
+                {
+                    color = EvaluateAudioReactiveColor(i, _smoothedAudioLevel);
                 }
                 else if (palette != null && palette.Length > 0)
                 {
@@ -272,6 +292,74 @@ namespace Livisor.Live.Penlights
 
                 _colors[i] = new float4(color.r, color.g, color.b, color.a);
             }
+        }
+
+        void UpdateAudioReactiveAppearance()
+        {
+            if (_appearance.colorMode != PenlightColorMode.AudioReactive ||
+                _colorBuffer == null ||
+                !_colors.IsCreated)
+                return;
+
+            var hasAudio = _audioSource != null && _audioSource.IsAvailable;
+            if (!hasAudio && !_missingAudioSourceWarningIssued)
+            {
+                Debug.LogWarning(
+                    "Audio Reactive color mode is selected, but no penlight audio source is available.",
+                    this);
+                _missingAudioSourceWarningIssued = true;
+            }
+
+            var audio = _appearance.audioReactive;
+            var targetLevel = hasAudio
+                ? Mathf.Clamp01(_audioSource.GetLevel(audio.input) * audio.gain)
+                : 0.0f;
+            var responseSpeed = targetLevel > _smoothedAudioLevel
+                ? audio.attackSpeed
+                : audio.releaseSpeed;
+            _smoothedAudioLevel = Mathf.MoveTowards(
+                _smoothedAudioLevel,
+                targetLevel,
+                responseSpeed * Time.deltaTime);
+
+            SetEmissionIntensity(_smoothedAudioLevel);
+
+            if (Time.unscaledTime < _nextAudioColorUpdateTime)
+                return;
+
+            _nextAudioColorUpdateTime = Time.unscaledTime + 1.0f / audio.colorUpdateRateHz;
+            for (var i = 0; i < _instanceCount; i++)
+            {
+                var color = EvaluateAudioReactiveColor(i, _smoothedAudioLevel);
+                _colors[i] = new float4(color.r, color.g, color.b, color.a);
+            }
+
+            _colorBuffer.SetData(_colors);
+        }
+
+        Color EvaluateAudioReactiveColor(int instanceIndex, float audioLevel)
+        {
+            var audio = _appearance.audioReactive;
+            var hash = Hash(_seeds[instanceIndex]);
+            var random01 = (hash & 0x00ffffffu) / 16777215.0f;
+            var spreadOffset = (random01 - 0.5f) * audio.perStickColorSpread;
+            var colorLevel = Mathf.Clamp01(audioLevel + spreadOffset);
+            return Color.Lerp(audio.lowLevelColor, audio.highLevelColor, colorLevel);
+        }
+
+        void SetEmissionIntensity(float audioLevel)
+        {
+            var intensity = _appearance.emissionIntensity;
+            if (_appearance.colorMode == PenlightColorMode.AudioReactive)
+            {
+                var audio = _appearance.audioReactive;
+                intensity *= Mathf.Lerp(
+                    audio.minimumEmissionMultiplier,
+                    audio.maximumEmissionMultiplier,
+                    Mathf.Clamp01(audioLevel));
+            }
+
+            _materialProperties?.SetFloat(EmissionIntensityId, intensity);
         }
 
         void CalculateWorldBounds(List<float3> positions)

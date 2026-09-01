@@ -27,15 +27,96 @@ namespace Livisor.Live.Penlights
         Alternating
     }
 
+    public enum PenlightColorMode
+    {
+        Fixed,
+        RandomPalette,
+        AudioReactive
+    }
+
+    public enum PenlightAudioInput
+    {
+        OverallVolume,
+        Bass,
+        LowMid,
+        HighMid,
+        Treble
+    }
+
+    [Serializable]
+    public struct PenlightAudioReactiveSettings
+    {
+        public PenlightAudioInput input;
+
+        [ColorUsage(true, true)]
+        public Color lowLevelColor;
+
+        [ColorUsage(true, true)]
+        public Color highLevelColor;
+
+        [Min(0.0f)]
+        public float gain;
+
+        [Min(0.0f)]
+        public float attackSpeed;
+
+        [Min(0.0f)]
+        public float releaseSpeed;
+
+        [Range(0.0f, 1.0f)]
+        public float perStickColorSpread;
+
+        [Min(0.0f)]
+        public float minimumEmissionMultiplier;
+
+        [Min(0.0f)]
+        public float maximumEmissionMultiplier;
+
+        [Range(1.0f, 60.0f)]
+        public float colorUpdateRateHz;
+
+        public static PenlightAudioReactiveSettings Default()
+        {
+            return new PenlightAudioReactiveSettings
+            {
+                input = PenlightAudioInput.OverallVolume,
+                lowLevelColor = new Color(0.02f, 0.08f, 0.35f, 1.0f),
+                highLevelColor = new Color(1.0f, 0.12f, 0.75f, 1.0f),
+                gain = 1.25f,
+                attackSpeed = 8.0f,
+                releaseSpeed = 2.5f,
+                perStickColorSpread = 0.15f,
+                minimumEmissionMultiplier = 0.6f,
+                maximumEmissionMultiplier = 1.8f,
+                colorUpdateRateHz = 30.0f
+            };
+        }
+
+        public void Clamp()
+        {
+            gain = Mathf.Max(0.0f, gain);
+            attackSpeed = Mathf.Max(0.0f, attackSpeed);
+            releaseSpeed = Mathf.Max(0.0f, releaseSpeed);
+            perStickColorSpread = Mathf.Clamp01(perStickColorSpread);
+            minimumEmissionMultiplier = Mathf.Max(0.0f, minimumEmissionMultiplier);
+            maximumEmissionMultiplier = Mathf.Max(
+                minimumEmissionMultiplier,
+                maximumEmissionMultiplier);
+            colorUpdateRateHz = Mathf.Clamp(colorUpdateRateHz, 1.0f, 60.0f);
+        }
+    }
+
     [Serializable]
     public struct PenlightAppearanceSettings
     {
-        public bool randomColorEnabled;
+        public PenlightColorMode colorMode;
 
         [ColorUsage(true, true)]
         public Color baseColor;
 
         public Color[] randomColorPalette;
+
+        public PenlightAudioReactiveSettings audioReactive;
 
         [Min(0.0f)]
         public float emissionIntensity;
@@ -46,7 +127,7 @@ namespace Livisor.Live.Penlights
         {
             return new PenlightAppearanceSettings
             {
-                randomColorEnabled = true,
+                colorMode = PenlightColorMode.RandomPalette,
                 baseColor = new Color(0.1f, 1.0f, 0.35f, 1.0f),
                 randomColorPalette = new[]
                 {
@@ -56,6 +137,7 @@ namespace Livisor.Live.Penlights
                     new Color(1.0f, 0.75f, 0.08f, 1.0f),
                     new Color(0.95f, 0.15f, 1.0f, 1.0f)
                 },
+                audioReactive = PenlightAudioReactiveSettings.Default(),
                 emissionIntensity = 2.0f,
                 randomSeed = 12345u
             };
@@ -64,6 +146,7 @@ namespace Livisor.Live.Penlights
         public void Clamp()
         {
             emissionIntensity = Mathf.Max(0.0f, emissionIntensity);
+            audioReactive.Clamp();
             if (randomSeed == 0u) randomSeed = 1u;
         }
     }
