@@ -19,4 +19,14 @@ public static class SmokeTest
         go.AddComponent<SmokeTestDriver>();
         EditorApplication.EnterPlaymode();
     }
+
+    /// <summary>管理者画面のボタンを押して配信する版。Admin シーンを開いて Play モードに入る。</summary>
+    [MenuItem("Livisor/Smoke Test (Admin)")]
+    public static void RunAdmin()
+    {
+        EditorSceneManager.OpenScene("Assets/Admin/Scenes/Admin.unity");
+        var go = new GameObject("SmokeTestAdminDriver");
+        go.AddComponent<SmokeTestAdminDriver>();
+        EditorApplication.EnterPlaymode();
+    }
 }
