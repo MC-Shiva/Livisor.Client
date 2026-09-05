@@ -79,7 +79,7 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         yield return WaitUntil(() => _transports.Count > n0, 5f);
         var t1 = _transports.LastOrDefault();
         Check(t1 != null && t1.Playing && t1.ScheduledAction == null && t1.StartedAtServerMs > 0, "PLAY: 観測役に playing=true・予約なし・開始時刻ありが届く");
-        yield return new WaitForSecondsRealtime(0.3f);
+        yield return WaitSent(root);
         Check(root.Q<Label>("transport-status").text.StartsWith("再生中"), "PLAY: 画面が『再生中』になる");
         Check(ReceiverCount("[Play] PLAY") >= 1, "PLAY: 受信側が再生する");
 
@@ -88,6 +88,7 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         Click(root, "play-button");
         yield return WaitUntil(() => _transports.Count > n1, 5f);
         var t2 = _transports.LastOrDefault();
+        yield return WaitSent(root);
         Check(t2 != null && t1 != null && t2.Playing && t2.StartedAtServerMs == t1.StartedAtServerMs, "再生中の PLAY は開始時刻を変えない");
 
         // 5. 音量 150 → 拒否
@@ -133,6 +134,7 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         Click(root, "schedule-button");
         yield return WaitUntil(() => _transports.Count > n2, 5f);
         var t3 = _transports.LastOrDefault();
+        yield return WaitSent(root);
         Check(t3 != null && t3.ScheduledAction != null && t3.ScheduledAction.Time == "00:00:01:00"
               && t3.ScheduledAction.Action == ActionType.VolumeChange && t3.ScheduledAction.Value.Number == 30,
               "SCHEDULE: 観測役に予約 00:00:01:00 volumeChange=30 が届く（先頭行の内容）");
@@ -149,7 +151,7 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         Click(root, "cancel-schedule-button");
         yield return WaitUntil(() => _transports.Count > n3, 5f);
         var t4 = _transports.LastOrDefault();
-        yield return new WaitForSecondsRealtime(0.3f);
+        yield return WaitSent(root);
         Check(t4 != null && t4.ScheduledAction == null && t4.Playing, "CANCEL: 予約だけ消え、再生は続く");
         Check(root.Q<Label>("transport-status").text.Contains("予約なし"), "CANCEL: 画面が『予約なし』になる");
 
@@ -157,11 +159,12 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         var n4 = _transports.Count;
         Click(root, "schedule-button");
         yield return WaitUntil(() => _transports.Count > n4, 5f);
+        yield return WaitSent(root);
         var n5 = _transports.Count;
         Click(root, "stop-button");
         yield return WaitUntil(() => _transports.Count > n5, 5f);
         var t5 = _transports.LastOrDefault();
-        yield return new WaitForSecondsRealtime(0.3f);
+        yield return WaitSent(root);
         Check(t5 != null && !t5.Playing && t5.ScheduledAction != null && t5.StartedAtServerMs == 0, "STOP: playing=false・開始時刻 0・予約は残る");
         Check(root.Q<Label>("transport-status").text.StartsWith("停止中") && root.Q<Label>("transport-status").text.Contains("予約 00:00:01:00"), "STOP: 画面が『停止中 / 予約あり』になる");
         Check(ReceiverCount("[Play] STOP") >= 2, "STOP: 受信側が停止する");
@@ -171,13 +174,14 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         Click(root, "play-button");
         yield return WaitUntil(() => _transports.Count > n6, 5f);
         var t6 = _transports.LastOrDefault();
+        yield return WaitSent(root);
         Check(t6 != null && t6.Playing && t1 != null && t6.StartedAtServerMs > t1.StartedAtServerMs && t6.ScheduledAction != null, "再 PLAY: 新しい開始時刻になり予約は残る");
         yield return WaitUntil(() => ReceiverCount("VOLUME -> 30") > fired30b, 4f);
         Check(ReceiverCount("VOLUME -> 30") > fired30b, "再 PLAY: 予約が再び発火する");
 
         // 11. STOP → DISCONNECT
         Click(root, "stop-button");
-        yield return new WaitForSecondsRealtime(0.8f);
+        yield return WaitSent(root);
         Click(root, "connect-button"); // 接続中は DISCONNECT
         yield return WaitUntilLabel(root, "connection-status", "Not Connected", 5f);
         Check(root.Q<Label>("connection-status").text.Contains("Not Connected"), "DISCONNECT で未接続になる");
@@ -236,6 +240,13 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
 
     private static IEnumerator WaitUntilLabel(VisualElement root, string name, string contains, float timeoutSeconds)
         => WaitUntil(() => root.Q<Label>(name).text.Contains(contains), timeoutSeconds);
+
+    // Unary の応答は Hub の配信より後に届くことがあるので、画面の完了文言（送りました / 失敗）まで待ってから次へ進む。
+    private static IEnumerator WaitSent(VisualElement root, float timeoutSeconds = 5f)
+    {
+        var label = root.Q<Label>("status-label");
+        yield return WaitUntil(() => label.text.Contains("送りました") || label.text.Contains("失敗"), timeoutSeconds);
+    }
 }
 
 internal static class LabelExtensions
