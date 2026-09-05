@@ -244,10 +244,12 @@ public class AdminConsoleView : MonoBehaviour
             return;
         }
 
-        if (actions.Length > 1)
-            SetStatus($"予約は 1 件だけです。先頭の {actions[0].Time} を送ります（他 {actions.Length - 1} 件は送りません）。");
-
-        _ = RunAsync($"予約 {actions[0].Time}", () => _client.ScheduleActionAsync(actions[0]));
+        // 予約は 1 件だけなので、時刻順で最初の行だけを送る。他の行があることは送信結果の文言に含める
+        // （送信中の文言で上書きされて読めなくならないように、別メッセージにはしない）。
+        var label = actions.Length > 1
+            ? $"予約 {actions[0].Time}（他 {actions.Length - 1} 件は送りません）"
+            : $"予約 {actions[0].Time}";
+        _ = RunAsync(label, () => _client.ScheduleActionAsync(actions[0]));
     }
 
     /// <summary>音量を状態同期に publish する。同じ room の全員に届き、自分にも戻ってくる。</summary>
