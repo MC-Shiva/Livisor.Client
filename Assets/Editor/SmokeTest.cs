@@ -29,4 +29,14 @@ public static class SmokeTest
         go.AddComponent<SmokeTestAdminDriver>();
         EditorApplication.EnterPlaymode();
     }
+
+    /// <summary>管理者画面の全機能（入力チェック・再生・二重再生・音量の拒否と反映・予約・取消・停止・再開・切断・再接続）を通す版。</summary>
+    [MenuItem("Livisor/Smoke Test (Admin, all features)")]
+    public static void RunAdminFull()
+    {
+        EditorSceneManager.OpenScene("Assets/Admin/Scenes/Admin.unity");
+        var go = new GameObject("SmokeTestAdminFullDriver");
+        go.AddComponent<SmokeTestAdminFullDriver>();
+        EditorApplication.EnterPlaymode();
+    }
 }
