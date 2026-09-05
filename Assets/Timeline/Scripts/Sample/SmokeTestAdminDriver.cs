@@ -105,13 +105,20 @@ public class SmokeTestAdminDriver : MonoBehaviour
 #endif
     }
 
-    // UI Toolkit のボタンに、人がクリックしたのと同じイベントを送る。
+    // UI Toolkit のボタンの clicked を起こす。ClickEvent を送るだけでは Clickable が反応しないため、
+    // Button が持つ Clickable の Invoke を呼び、画面と同じ経路（clicked の購読）を通す。
     private static void Click(VisualElement root, string name)
     {
         var button = root.Q<Button>(name);
         using var evt = ClickEvent.GetPooled();
         evt.target = button;
-        button.SendEvent(evt);
+        var invoke = typeof(Clickable).GetMethod("Invoke",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+            null, new[] { typeof(EventBase) }, null);
+        if (invoke != null)
+            invoke.Invoke(button.clickable, new object[] { evt });
+        else
+            button.SendEvent(evt);
     }
 
     private static IEnumerator WaitLabel(VisualElement root, string name, string contains, float timeoutSeconds)
