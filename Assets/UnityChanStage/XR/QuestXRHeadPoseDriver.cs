@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR;
 
+[DefaultExecutionOrder(-100)]
 public class QuestXRHeadPoseDriver : MonoBehaviour
 {
     public Vector3 previewLocalPosition = new Vector3(0.0f, 1.35f, 0.0f);
