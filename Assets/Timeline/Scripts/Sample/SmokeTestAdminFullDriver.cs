@@ -54,7 +54,21 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         var connectTask = _observer.ConnectAsync(address, root.Q<TextField>("room-id").value);
         yield return new WaitUntil(() => connectTask.IsCompleted);
         if (connectTask.IsFaulted) { Finish("観測役が接続できない: " + connectTask.Exception?.GetBaseException().Message); yield break; }
+
+        // 前回の実行の状態（予約・再生中）が room に残っていると期待値がずれるので、観測役で初期化しておく。
+        var resetTask = ResetRoomAsync();
+        yield return new WaitUntil(() => resetTask.IsCompleted);
         yield return new WaitForSecondsRealtime(2f); // 受信側の接続を待つ
+
+        // 0. 接続失敗の表示: 誰も待ち受けていないポートへ CONNECT
+        var addrField0 = root.Q<TextField>("server-address");
+        addrField0.value = "http://127.0.0.1:1";
+        Click(root, "connect-button");
+        yield return WaitUntilLabel(root, "connection-status", "接続失敗", 20f);
+        Check(root.Q<Label>("connection-status").text.Contains("接続失敗") && root.Q<Button>("connect-button").text == "CONNECT",
+              "繋がらない相手には『接続失敗』と出て、ボタンが CONNECT に戻る");
+        Check(!root.Q<Button>("play-button").enabledSelf, "接続失敗後も操作ボタンは押せない");
+        addrField0.value = address;
 
         // 1. 入力チェック: アドレス空で CONNECT
         var addrField = root.Q<TextField>("server-address");
@@ -195,6 +209,18 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         Check(root.Q<Label>("transport-status").StartsWith("停止中"), "再接続直後に現在値（停止中）が表示される");
 
         Finish(null);
+    }
+
+    private async System.Threading.Tasks.Task ResetRoomAsync()
+    {
+        try
+        {
+            await _observer.CancelScheduledActionAsync();
+            await _observer.StopAsync();
+        }
+        catch (System.Exception e) { Debug.LogWarning("[SmokeAdminFull] reset failed: " + e.Message); }
+        _transports.Clear();
+        _volumes.Clear();
     }
 
     private void Finish(string fatal)
