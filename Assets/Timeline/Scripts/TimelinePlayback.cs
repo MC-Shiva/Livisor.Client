@@ -1,45 +1,41 @@
-using System.Collections.Generic;
 using Livisor.Shared.Common;
 using Livisor.Shared.DTO;
 
 /// <summary>
-/// タイムライン再生のスケジュール計算（UnityEngine 非依存・テスト可能）。
-/// 受信した配列を「先頭アクション基準の相対オフセット」に変換する。
-/// 絶対時刻方式だと、配信時に既に過ぎた time のアクションが一斉発火し、
-/// 曲のブツ切れや音量の急変が起きる。相対オフセットにして間隔を保つことでこれを防ぐ。
+/// 予約アクションの発火計算（UnityEngine 非依存・テスト可能）。
+/// サーバーから届いた <see cref="TransportState"/> から「あと何秒待って発火するか」を出す。
+///
+/// 式は 2026-08-29 の決定どおり（TransportState のコメントを参照）:
+///   待ち時間 = 相対時間 - (ServerTimeMs - StartedAtServerMs)
+/// 括弧内は「サーバーが送信した時点で既に経過していた再生位置」。
+/// 受け取った瞬間を基準にするので、サーバーとクライアントの時計は比べない。
+/// 片道の通信遅延ぶんだけ遅れて発火するが、8/31 の合意で今回はこの遅れを扱わない。
 /// </summary>
 public static class TimelinePlayback
 {
-    /// <summary>スケジュールの 1 要素: 先頭からの相対遅延(秒)と、その時刻に実行するアクション。</summary>
-    public readonly struct ScheduledAction
-    {
-        public double DelaySeconds { get; }
-        public TimelineAction Action { get; }
-
-        public ScheduledAction(double delaySeconds, TimelineAction action)
-        {
-            DelaySeconds = delaySeconds;
-            Action = action;
-        }
-    }
-
     /// <summary>
-    /// 先頭アクションの time を基準(0 秒)とした相対オフセットのスケジュールを作る。
+    /// 発火すべき予約があれば、その待ち時間（秒）とアクションを返す。
+    /// 停止中（基準時刻が無い）か、予約が無いか、時刻の形式が不正なら false。
+    /// 既に相対時間を過ぎている場合は待ち時間 0 で返す（受信した瞬間に発火する）。
     /// </summary>
-    public static IReadOnlyList<ScheduledAction> BuildSchedule(TimelineAction[] actions)
+    public static bool TryGetPendingAction(TransportState state, out double delaySeconds, out TimelineAction action)
     {
-        var schedule = new List<ScheduledAction>();
-        if (actions == null || actions.Length == 0) return schedule;
+        delaySeconds = 0;
+        action = null;
 
-        double baseSeconds = ParseTimeToSeconds(actions[0].Time);
-        foreach (var action in actions)
-        {
-            double delay = ParseTimeToSeconds(action.Time) - baseSeconds;
-            if (delay < 0) delay = 0;
-            schedule.Add(new ScheduledAction(delay, action));
-        }
+        if (state == null || !state.Playing || state.ScheduledAction == null)
+            return false;
 
-        return schedule;
+        if (!PlaybackTime.TryParse(state.ScheduledAction.Time, out var offset))
+            return false;
+
+        var elapsedSeconds = (state.ServerTimeMs - state.StartedAtServerMs) / 1000.0;
+        delaySeconds = offset.TotalSeconds - elapsedSeconds;
+        if (delaySeconds < 0)
+            delaySeconds = 0;
+
+        action = state.ScheduledAction;
+        return true;
     }
 
     /// <summary>
