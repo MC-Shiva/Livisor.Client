@@ -4,10 +4,20 @@ Livisor for Client
 
 ライブScene: `Assets/Scenes/LiveScene.unity`
 
+通信なしのデモScene: `Assets/Scenes/DemoScene.unity`
+
+## DemoSceneでライブ演出を確認
+
+`DemoScene` はサーバー、Admin Scene、ラズパイへ接続せず、ライブの見た目と音楽を確認するためのSceneです。
+Play Modeを開始すると自動再生し、Gameビューで **S** を押すと再開、**P** を押すと一時停止します。
+音楽は本番と同じAnimation Eventによって演出開始の約2秒後に再生されます。
+DemoSceneは本番のBuild Settingsには含めません。
+
 再生中にGameビューで **C** を押すと、観客席とUnitychan目線を切り替えます。
 Unitychan目線では目の位置に追従して客席を見渡せます。
 Questでは **B / Y** で切り替え、**A / X**（Editorでは **R**）で視線の正面を合わせ直せます。
 Editorでは滑らかに移動し、HMD接続時は即座に切り替わります。
+
 ## Unity CLIで疎通確認
 
 このディレクトリを対象に実行する（別の場所にある同名プロジェクトと取り違えないこと）。
