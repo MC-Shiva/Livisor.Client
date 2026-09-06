@@ -17,6 +17,7 @@ public class StageDirector : MonoBehaviour
     // Prefabs.
     public GameObject musicPlayerPrefab;
     public GameObject mainCameraRigPrefab;
+    public GameObject playerPenlightPrefab;
     public GameObject[] prefabsNeedsActivation;
     public GameObject[] prefabsOnTimeline;
     public GameObject[] miscPrefabs;
@@ -113,7 +114,8 @@ public class StageDirector : MonoBehaviour
         mainCameraRig = QuestXRStageRig.Create(
             questXRStageOrigin,
             Quaternion.Euler(questXRStageRotation),
-            questXRPreviewHeadPosition);
+            questXRPreviewHeadPosition,
+            playerPenlightPrefab);
         mainCameraSwitcher = null;
         screenOverlays = new ScreenOverlay[0];
     }
@@ -128,6 +130,9 @@ public class StageDirector : MonoBehaviour
 
             var eyeCamera = mainCameraRig.AddComponent<UnityChanEyeCamera>();
             eyeCamera.Initialize(mainCameraRig.GetComponentInChildren<Camera>(), animator);
+            foreach (var playerPenlight in
+                     mainCameraRig.GetComponentsInChildren<PlayerPenlightController>(true))
+                playerPenlight.BindViewSource(eyeCamera);
             return;
         }
 

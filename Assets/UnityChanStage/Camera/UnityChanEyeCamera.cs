@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.XR;
 
@@ -11,6 +12,7 @@ public sealed class UnityChanEyeCamera : MonoBehaviour
     public float eyeFieldOfView = 60.0f;
 
     public bool IsUnityChanView { get; private set; }
+    public event Action<bool> ViewChanged;
 
     Camera viewCamera;
     Animator performer;
@@ -79,7 +81,7 @@ public sealed class UnityChanEyeCamera : MonoBehaviour
                 cameraSwitcher.enabled = false;
         }
 
-        IsUnityChanView = !IsUnityChanView;
+        SetUnityChanView(!IsUnityChanView);
         transitionPosition = transform.position;
         transitionRotation = transform.rotation;
         transitionStarted = Time.unscaledTime;
@@ -156,7 +158,11 @@ public sealed class UnityChanEyeCamera : MonoBehaviour
     void RestoreAudience()
     {
         if (!hasSavedState)
+        {
+            SetUnityChanView(false);
+            transitioning = false;
             return;
+        }
 
         transform.SetPositionAndRotation(audiencePosition, audienceRotation);
         if (viewCamera)
@@ -169,8 +175,17 @@ public sealed class UnityChanEyeCamera : MonoBehaviour
             performer.cullingMode = audienceAnimatorCulling;
         if (cameraSwitcher)
             cameraSwitcher.enabled = switcherWasEnabled;
-        IsUnityChanView = false;
+        SetUnityChanView(false);
         hasSavedState = false;
         transitioning = false;
+    }
+
+    void SetUnityChanView(bool enabled)
+    {
+        if (IsUnityChanView == enabled)
+            return;
+
+        IsUnityChanView = enabled;
+        ViewChanged?.Invoke(enabled);
     }
 }
