@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using Livisor.Live.Penlights;
-using UnityEngine.SceneManagement;
 
 public class StageDirector : MonoBehaviour
 {
@@ -33,16 +32,27 @@ public class StageDirector : MonoBehaviour
 
     // Objects to be controlled.
     GameObject musicPlayer;
+    MusicPlayerController musicPlayerController;
     GameObject mainCameraRig;
     CameraSwitcher mainCameraSwitcher;
     ScreenOverlay[] screenOverlays;
     GameObject[] objectsNeedsActivation;
     GameObject[] objectsOnTimeline;
 
+    // 一時停止前の再生速度。再開時に元へ戻す。
+    float resumeTimeScale = 1.0f;
+    bool isPerformancePaused;
+
+    public bool IsPerformancePaused => isPerformancePaused;
+    public MusicPlayerController MusicPlayerController => musicPlayerController;
+
     void Awake()
     {
         // Instantiate the prefabs.
         musicPlayer = (GameObject)Instantiate(musicPlayerPrefab);
+        musicPlayerController = musicPlayer.GetComponent<MusicPlayerController>();
+        if (musicPlayerController == null)
+            Debug.LogError("MusicPlayer prefab requires MusicPlayerController.", musicPlayer);
 
         SetupCameraRig();
 
@@ -74,6 +84,9 @@ public class StageDirector : MonoBehaviour
 
         if (enableUnityChanView)
             SetupUnityChanView();
+
+        // 最初の再生操作を受け取るまで、ライブを先頭で待機させる。
+        PausePerformance();
     }
 
     void Update()
@@ -123,16 +136,15 @@ public class StageDirector : MonoBehaviour
 
     public void StartMusic()
     {
+        if (musicPlayerController != null)
+        {
+            musicPlayerController.PlayAll();
+            return;
+        }
+
         foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
             source.Play();
     }
-
-    // === サーバーからの指示で操作するための入口（TimelineReceiver → StageMediaPlayer が呼ぶ）===
-    // メソッド名は PR #9（ライブの再生停止・音量調整）と同じにしてあり、PR #9 を取り込むときはそちらの実装で置き換える。
-
-    // 一時停止前の再生速度。再開時に元へ戻す。
-    float resumeTimeScale = 1.0f;
-    bool isPerformancePaused;
 
     /// <summary>現在位置で音楽とライブ演出を一時停止する。音源は位置を保持して止め、演出は timeScale でまとめて止める。</summary>
     public void PausePerformance()
@@ -143,8 +155,11 @@ public class StageDirector : MonoBehaviour
         if (Time.timeScale > 0.0f)
             resumeTimeScale = Time.timeScale;
 
-        foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
-            source.Pause();
+        if (musicPlayerController != null)
+            musicPlayerController.PauseAll();
+        else
+            foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
+                source.Pause();
 
         Time.timeScale = 0.0f;
         isPerformancePaused = true;
@@ -158,38 +173,32 @@ public class StageDirector : MonoBehaviour
 
         Time.timeScale = resumeTimeScale > 0.0f ? resumeTimeScale : 1.0f;
 
-        foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
+        if (musicPlayerController != null)
+            musicPlayerController.ResumeAll();
+        else
         {
-            if (source.time > 0.0f)
-                source.UnPause();
-            else
-                source.Play();
+            foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
+            {
+                if (source.time > 0.0f)
+                    source.UnPause();
+                else
+                    source.Play();
+            }
         }
 
         isPerformancePaused = false;
     }
 
-    /// <summary>
-    /// 観客に聞こえる Main 音源の音量だけを 0〜100 の整数で変える。
-    /// Spectrum（演出の解析用音源）には触れない。範囲外は無視する。
-    /// </summary>
+    /// <summary>Spectrum には触れず、聞こえる Main 音源だけを変更する。</summary>
     public void SetMainVolume(int percent)
     {
-        if (percent < 0 || percent > 100)
+        if (musicPlayerController == null)
         {
-            Debug.LogWarning($"[StageDirector] Volume must be an integer from 0 to 100: {percent}", this);
+            Debug.LogError("MusicPlayerController is not available.", this);
             return;
         }
 
-        var main = musicPlayer.transform.Find("Main");
-        var source = main != null ? main.GetComponent<AudioSource>() : null;
-        if (source == null)
-        {
-            Debug.LogError("MusicPlayer requires an AudioSource on child GameObject 'Main'.", musicPlayer);
-            return;
-        }
-
-        source.volume = percent / 100.0f;
+        musicPlayerController.SetMainVolume(percent);
     }
 
     public void ActivateProps()
@@ -240,7 +249,14 @@ public class StageDirector : MonoBehaviour
 
     public void EndPerformance()
     {
-        //Application.LoadLevel(0);
-        SceneManager.LoadScene(0);
+        // 今回はシーンを自動リロードせず、最終位置で停止する。
+        PausePerformance();
+    }
+
+    void OnDestroy()
+    {
+        // Play Mode 終了や別シーンへの遷移後にグローバルな timeScale を残さない。
+        if (isPerformancePaused)
+            Time.timeScale = resumeTimeScale > 0.0f ? resumeTimeScale : 1.0f;
     }
 }
