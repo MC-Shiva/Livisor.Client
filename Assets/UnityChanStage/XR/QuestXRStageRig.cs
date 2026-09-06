@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 public static class QuestXRStageRig
 {
@@ -21,7 +22,15 @@ public static class QuestXRStageRig
         camera.backgroundColor = Color.black;
         camera.nearClipPlane = 0.05f;
         camera.farClipPlane = 200.0f;
-        camera.stereoTargetEye = StereoTargetEyeMask.Both;
+        camera.allowHDR = true;
+
+        var cameraData = camera.GetUniversalAdditionalCameraData();
+        cameraData.renderPostProcessing = true;
+        cameraData.dithering = true;
+        cameraData.volumeLayerMask = 1 << 0; // Default layer
+        cameraData.volumeTrigger = camera.transform;
+        //Build in専用APIのためコメントアウト
+        //camera.stereoTargetEye = StereoTargetEyeMask.Both;
 
         cameraObject.AddComponent<AudioListener>();
 

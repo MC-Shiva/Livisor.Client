@@ -111,3 +111,5 @@ InitTestScene*.unity*
 # envfiles
 .env
 .env.local
+# スモークテストの結果ファイル
+SmokeTest*Result.json

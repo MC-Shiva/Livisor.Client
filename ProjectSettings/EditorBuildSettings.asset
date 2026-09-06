@@ -6,7 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/Main.unity
+    path: Assets/Scenes/LiveScene.unity
     guid: eac708282bd3644f08ee300328f7e486
   m_configObjects:
     com.unity.mars-ar-foundation-providers.xr_subsystem_settings: {fileID: 11400000,

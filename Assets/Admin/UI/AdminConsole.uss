@@ -1,0 +1,406 @@
+ /*ここから USS でレイアウト・配色を組み立てる。 */
+/*uss変数を定義*/
+/*https://docs.unity.cn/ja/2021.3/Manual/UIE-USS-CustomProperties.html*/
+ :root {
+     --color-bg-root: rgb(11, 14, 20);
+     --color-bg-panel: rgb(18, 22, 31);
+     --color-bg-input: rgb(23, 28, 40);
+     --color-border: rgb(35, 42, 58);
+     --color-border-soft: rgb(26, 32, 48);
+     --color-border-focus: rgb(31, 107, 99);
+     --color-text-primary: rgb(231, 236, 243);
+     --color-text-secondary: rgb(136, 145, 163);
+     --color-text-faint: rgb(82, 90, 107);
+     --color-text-on-accent: rgb(6, 35, 30);
+     --color-text-title: rgb(255, 255, 255);
+     --color-accent: rgb(66, 232, 210);
+     --color-accent-hover: rgb(87, 240, 219);
+     --color-accent-active: rgb(52, 205, 184);
+     --color-danger: rgb(255, 92, 108);
+     --color-bg-raised: rgb(24, 29, 42);
+     --color-accent-dim: rgba(66, 232, 210, 0.45);
+     --color-text-dim: rgb(110, 118, 138);
+     --color-cue-teal: rgb(66, 232, 210);
+     --color-cue-pink: rgb(232, 92, 154);
+     --color-cue-orange: rgb(232, 168, 66);
+ }
+
+.root {
+    background-color: var(--color-bg-root);
+    flex-grow: 0;
+    width: auto;
+    height: auto;
+}
+
+.panel {
+    background-color: var(--color-bg-panel);
+    border-color: var(--color-border);
+    border-width: 1px;
+    border-radius: 10px;
+    /*padding: 20px;*/
+    margin: 10px;
+}
+
+.field-label{
+    color: var(--color-text-secondary);
+    margin: 10px;
+    -unity-font-style: bold;
+    -unity-text-outline-width: 0.2px;
+}
+.console-input {
+    /* ルート要素側の余白調整など */
+    margin: 10px;
+}
+
+/*https://docs.unity3d.com/ja/2022.3/Manual/UIE-uxml-element-TextField.html*/
+.console-input > .unity-text-field__input {
+    background-color: var(--color-bg-input);
+    border-color: var(--color-border);
+    border-width: 1px;
+    border-radius: 6px;
+    color: var(--color-text-primary);
+    padding: 8px 10px;
+    font-size: 13px;
+    --unity-cursor-color: var(--color-text-primary);
+}
+
+/*focusを付与*/
+.console-input:focus > .unity-text-field__input,
+.console-input > .unity-text-field__input:focus {
+    border-color: var(--color-border-focus);
+}
+.console-title-row {
+    flex-direction: row;
+    align-items: center;
+    -unity-font-style: bold;
+    -unity-text-outline-width: 0.2px;
+}
+
+ .connect-button {
+     background-color: var(--color-accent);
+     border-width: 1px;
+     border-color: rgba(66, 232, 210, 0.4);
+     border-radius: 6px;
+     color: var(--color-text-on-accent);
+     -unity-font-style: bold;
+     -unity-text-outline-width: 0.2px;
+     -unity-text-outline-color: var(--color-text-on-accent);
+     font-size: 20px;
+     padding: 10px 18px;
+     margin: 10px;
+     transition: background-color 0.15s ease, scale 0.05s ease;
+ }
+
+ .connect-button:hover {
+     background-color: var(--color-accent-hover);
+ }
+
+ .connect-button:active {
+     background-color: var(--color-accent-active);
+     scale: 0.98 0.98;
+ }
+
+ .action-button {
+     background-color: var(--color-accent);
+     border-width: 1px;
+     border-color: rgba(66, 232, 210, 0.4);
+     border-radius: 6px;
+     color: var(--color-text-on-accent);
+     -unity-font-style: bold;
+     font-size: 13px;
+     padding: 10px 18px;
+     margin: 10px;
+     transition: background-color 0.15s ease, scale 0.05s ease;
+ }
+
+ .action-button:hover {
+     background-color: var(--color-accent-hover);
+ }
+
+ .action-button:active {
+     background-color: var(--color-accent-active);
+     scale: 0.98 0.98;
+ }
+
+.status-dot-wrap {
+    position: relative;
+    width: 58px;
+    height: 58px;
+    margin-right: 8px;
+}
+
+.status-dot-glow {
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    left: 0;
+    top: 0;
+    background-image: url("/Assets/Admin/UI/Textures/StatusDotGlow.png");
+    -unity-background-image-tint-color: var(--color-accent);
+}
+
+.status-dot {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    left: 14px;
+    top: 14px;
+    border-radius: 50%;
+    background-color: var(--color-accent);
+    box-shadow:
+            0 0 4px 1px rgba(66, 232, 210, 0.9),
+            0 0 12px 4px rgba(66, 232, 210, 0.5),
+            0 0 24px 8px rgba(66, 232, 210, 0.25);
+}
+
+/* 未接続/接続中: 点灯を落として控えめにする */
+.status-dot--offline {
+    background-color: var(--color-text-faint);
+    box-shadow: none;
+}
+
+/* 接続失敗: 赤で警告する */
+.status-dot--error {
+    background-color: var(--color-danger);
+    box-shadow:
+            0 0 4px 1px rgba(255, 92, 108, 0.9),
+            0 0 12px 4px rgba(255, 92, 108, 0.5);
+}
+
+.status-dot-glow--offline {
+    -unity-background-image-tint-color: var(--color-text-faint);
+}
+
+.status-dot-glow--error {
+    -unity-background-image-tint-color: var(--color-danger);
+}
+
+.console-title {
+    background-color: rgba(76, 76, 76, 0);
+    -unity-font-definition: url("project://database/Assets/Admin/UI/Fonts/NotoSansJP-VF SDF.asset?fileID=11400000&guid=23a888d7db5cb433cb13644614e6b609&type=2#NotoSansJP-VF SDF");
+    color: var(--color-text-title);
+    font-size: 30px;
+    -unity-font-style: bold;
+    -unity-text-outline-width: 0;
+}
+
+ /* ===== Timeline header ===== */
+ .timeline-row {
+     flex-direction: row;
+     align-items: center;
+ }
+
+ .timeline-header {
+     padding: 0 6px 10px;
+     border-bottom-width: 1px;
+     border-bottom-color: var(--color-border-soft);
+     margin-bottom: 6px;
+ }
+
+ .header-time,
+ .header-action,
+ .header-value {
+     -unity-font-style: bold;
+     font-size: 10px;
+     letter-spacing: 1px;
+     color: var(--color-text-faint);
+ }
+
+ .header-time { width: 140px; }
+ .header-action { width: 140px; }
+ .header-value { flex-grow: 1; }
+
+ /* ===== Timeline list & row item ===== */
+ .timeline-list {
+     flex-grow: 1;
+     background-color: transparent;
+ }
+
+ /* ===== カスタムフッター（-は上の行、+は下の行に分離） ===== */
+ .timeline-footer {
+     padding-top: 8px;
+ }
+
+ .timeline-footer-remove-row {
+     flex-direction: row;
+     justify-content: flex-end;
+     margin-bottom: 8px;
+ }
+
+ .footer-remove-button {
+     width: 28px;
+     height: 28px;
+     border-radius: 6px;
+     border-width: 1px;
+     border-color: var(--color-border-soft);
+     background-color: transparent;
+     color: var(--color-text-faint);
+     font-size: 15px;
+     -unity-text-align: middle-center;
+     padding: 0;
+ }
+
+ .footer-remove-button:hover {
+     color: var(--color-danger);
+     border-color: rgba(255, 92, 108, 0.4);
+     background-color: rgba(255, 92, 108, 0.08);
+ }
+
+ .footer-add-button {
+     flex-grow: 1;
+     background-color: transparent;
+     border-width: 1px;
+     border-color: var(--color-accent-dim);
+     border-radius: 8px;
+     color: var(--color-accent);
+     -unity-font-style: bold;
+     font-size: 13px;
+     padding: 10px;
+     margin: 0;
+     -unity-text-align: middle-center;
+     transition: background-color 0.15s ease;
+ }
+
+ .footer-add-button:hover {
+     background-color: rgba(66, 232, 210, 0.08);
+ }
+
+ .footer-add-button:active {
+     background-color: rgba(66, 232, 210, 0.16);
+     scale: 0.99 0.99;
+ }
+
+ .timeline-item {
+     background-color: var(--color-bg-raised);
+     border-left-width: 3px;
+     border-left-color: var(--color-accent-dim);
+     border-radius: 7px;
+     margin-bottom: 8px;
+     padding: 9px 10px;
+     align-items: center;
+ }
+
+ .timeline-item:hover {
+     border-color: var(--color-border);
+ }
+
+ .timeline-item--cue-0 { border-left-color: var(--color-cue-teal); }
+ .timeline-item--cue-1 { border-left-color: var(--color-cue-pink); }
+ .timeline-item--cue-2 { border-left-color: var(--color-cue-orange); }
+
+ .time-input {
+     width: 140px;
+     flex-direction: row;
+     align-items: center;
+     background-color: var(--color-bg-input);
+     border-radius: 6px;
+     padding: 4px 8px;
+     margin-right: 8px;
+ }
+
+ .time-part-field {
+     width: 20px;
+     margin: 0;
+     padding: 0;
+ }
+
+ .time-part-field > .unity-base-field__input {
+     background-color: transparent;
+     border-width: 0;
+     color: var(--color-accent);
+     -unity-font-style: bold;
+     font-size: 13px;
+     padding: 0;
+     -unity-text-align: middle-center;
+ }
+
+ .time-separator {
+     color: var(--color-accent);
+     -unity-font-style: bold;
+     font-size: 13px;
+     margin: 0 1px;
+ }
+
+ .category-field {
+     width: 140px;
+     margin-right: 8px;
+ }
+
+ .category-field > .unity-base-field__input,
+ .category-field > .unity-base-popup-field__input {
+     background-color: var(--color-bg-input);
+     border-color: var(--color-border);
+     border-width: 1px;
+     border-radius: 6px;
+     color: var(--color-text-primary);
+     font-size: 12px;
+     padding: 4px 8px;
+ }
+
+ .value-field { flex-grow: 1; }
+
+ .value-field > .unity-base-field__input,
+ .value-field > .unity-text-field__input {
+     background-color: var(--color-bg-input);
+     border-color: var(--color-border);
+     border-width: 1px;
+     border-radius: 6px;
+     color: var(--color-text-primary);
+     font-size: 12px;
+     padding: 6px 8px;
+     --unity-cursor-color: var(--color-text-primary);
+ }
+
+ .remove-button {
+     width: 28px;
+     height: 28px;
+     border-radius: 6px;
+     border-width: 1px;
+     border-color: var(--color-border-soft);
+     background-color: transparent;
+     color: var(--color-text-faint);
+     font-size: 15px;
+     -unity-text-align: middle-center;
+     padding: 0;
+     margin-left: 8px;
+ }
+
+ .remove-button:hover {
+     color: var(--color-danger);
+     border-color: rgba(255, 92, 108, 0.4);
+     background-color: rgba(255, 92, 108, 0.08);
+ }
+
+ /* ===== Footer ===== */
+ .footer {
+     flex-direction: row;
+     align-items: center;
+     justify-content: space-between;
+ }
+
+ .status-label {
+     font-size: 11px;
+     color: var(--color-text-dim);
+ }
+
+ .status-label.status-live {
+     color: var(--color-accent);
+ }
+
+ .status-label.status-error {
+     color: var(--color-danger);
+ }
+/* 再生・停止・音量の横並び（Transport / Volume パネル） */
+.button-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.button-row > .action-button {
+    margin-right: 8px;
+}
+
+.volume-input {
+    width: 96px;
+    margin-right: 8px;
+}
