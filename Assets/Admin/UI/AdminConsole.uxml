@@ -17,7 +17,24 @@
             <ui:Button name="connect-button" text="CONNECT" class="connect-button"/>
             <ui:Label name="connection-status" text="Not Connected" class="status-label"/>
         </ui:VisualElement>
+        <ui:VisualElement name="transport-panel" class="panel">
+            <ui:Label text="Transport" class="field-label"/>
+            <ui:VisualElement name="transport-row" class="button-row">
+                <ui:Button name="play-button" text="PLAY" class="action-button"/>
+                <ui:Button name="stop-button" text="STOP" class="action-button"/>
+            </ui:VisualElement>
+            <ui:Label name="transport-status" text="-" class="status-label"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="volume-panel" class="panel">
+            <ui:Label text="Volume (0-100)" class="field-label"/>
+            <ui:VisualElement name="volume-row" class="button-row">
+                <ui:IntegerField name="volume-field" value="100" class="console-input volume-input"/>
+                <ui:Button name="volume-button" text="APPLY" class="action-button"/>
+            </ui:VisualElement>
+            <ui:Label name="volume-status" text="-" class="status-label"/>
+        </ui:VisualElement>
         <ui:VisualElement name="timeline-panel" class="panel timeline-panel">
+            <ui:Label text="Schedule (relative to playback start, first row only)" class="field-label"/>
             <ui:VisualElement name="timeline-header" class="timeline-row timeline-header">
                 <ui:Label text="TIME (H:M:S:CS)" class="header-time"/>
                 <ui:Label text="CATEGORY" class="header-action"/>
@@ -27,7 +44,8 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="footer" class="panel footer">
-            <ui:Button name="broadcast-button" text="Broadcast" class="action-button broadcast-button"/>
+            <ui:Button name="schedule-button" text="SCHEDULE" class="action-button broadcast-button"/>
+            <ui:Button name="cancel-schedule-button" text="CANCEL" class="action-button"/>
             <ui:Label name="status-label" text="" class="status-label"/>
         </ui:VisualElement>
     </ui:VisualElement>
