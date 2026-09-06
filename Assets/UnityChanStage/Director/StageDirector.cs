@@ -9,6 +9,8 @@ public class StageDirector : MonoBehaviour
     // Control options.
     public bool ignoreFastForward = true;
     public bool useDirectorCameraInEditor = true;
+    [Tooltip("Allow C or the Quest secondary button (B/Y) to switch to Unitychan's eyes.")]
+    public bool enableUnityChanView;
     public Vector3 questXRStageOrigin = new Vector3(0.0f, 0.0f, 4.27f);
     public Vector3 questXRStageRotation = new Vector3(0.0f, 180.0f, 0.0f);
     public Vector3 questXRPreviewHeadPosition = new Vector3(0.0f, 1.35f, 0.0f);
@@ -31,6 +33,7 @@ public class StageDirector : MonoBehaviour
 
     // Objects to be controlled.
     GameObject musicPlayer;
+    GameObject mainCameraRig;
     CameraSwitcher mainCameraSwitcher;
     ScreenOverlay[] screenOverlays;
     GameObject[] objectsNeedsActivation;
@@ -68,6 +71,9 @@ public class StageDirector : MonoBehaviour
             audiencePenlight.SetAudioSource(penlightAudioSource);
             audiencePenlight.InitializeAt(audiencePenlightPlacement);
         }
+
+        if (enableUnityChanView)
+            SetupUnityChanView();
     }
 
     void Update()
@@ -84,19 +90,35 @@ public class StageDirector : MonoBehaviour
 #if UNITY_EDITOR
         if (useDirectorCameraInEditor)
         {
-            var cameraRig = (GameObject)Instantiate(mainCameraRigPrefab);
-            mainCameraSwitcher = cameraRig.GetComponentInChildren<CameraSwitcher>();
-            screenOverlays = cameraRig.GetComponentsInChildren<ScreenOverlay>();
+            mainCameraRig = (GameObject)Instantiate(mainCameraRigPrefab);
+            mainCameraSwitcher = mainCameraRig.GetComponentInChildren<CameraSwitcher>();
+            screenOverlays = mainCameraRig.GetComponentsInChildren<ScreenOverlay>();
             return;
         }
 #endif
 
-        QuestXRStageRig.Create(
+        mainCameraRig = QuestXRStageRig.Create(
             questXRStageOrigin,
             Quaternion.Euler(questXRStageRotation),
             questXRPreviewHeadPosition);
         mainCameraSwitcher = null;
         screenOverlays = new ScreenOverlay[0];
+    }
+
+    void SetupUnityChanView()
+    {
+        foreach (var performer in objectsOnTimeline)
+        {
+            var animator = performer.GetComponentInChildren<Animator>();
+            if (!animator || !animator.isHuman)
+                continue;
+
+            var eyeCamera = mainCameraRig.AddComponent<UnityChanEyeCamera>();
+            eyeCamera.Initialize(mainCameraRig.GetComponentInChildren<Camera>(), animator);
+            return;
+        }
+
+        Debug.LogWarning("Unitychan eye camera needs a humanoid performer on the stage timeline.", this);
     }
 
     public void StartMusic()

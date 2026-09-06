@@ -8,6 +8,8 @@ public class QuestXRInput : MonoBehaviour
 
     private readonly List<InputDevice> _controllers = new List<InputDevice>();
     private Transform _rigTransform;
+    private bool _primaryButtonWasPressed;
+    private bool _secondaryButtonWasPressed;
 
     void Awake()
     {
@@ -20,8 +22,15 @@ public class QuestXRInput : MonoBehaviour
         if (_controllers.Count == 0 || !_controllers[0].isValid)
             RefreshControllers();
 
-        if (WasPrimaryButtonPressed() || Input.GetKeyDown(editorRecenterKey))
+        var primaryPressed = IsButtonPressed(CommonUsages.primaryButton);
+        if ((primaryPressed && !_primaryButtonWasPressed) || Input.GetKeyDown(editorRecenterKey))
             RecenterYaw();
+        _primaryButtonWasPressed = primaryPressed;
+
+        var secondaryPressed = IsButtonPressed(CommonUsages.secondaryButton);
+        if (secondaryPressed && !_secondaryButtonWasPressed)
+            GetComponent<UnityChanEyeCamera>()?.ToggleView();
+        _secondaryButtonWasPressed = secondaryPressed;
     }
 
     private void RefreshControllers()
@@ -30,11 +39,11 @@ public class QuestXRInput : MonoBehaviour
         InputDevices.GetDevicesWithCharacteristics(InputDeviceCharacteristics.Controller, _controllers);
     }
 
-    private bool WasPrimaryButtonPressed()
+    private bool IsButtonPressed(InputFeatureUsage<bool> button)
     {
         foreach (var controller in _controllers)
         {
-            if (controller.TryGetFeatureValue(CommonUsages.primaryButton, out var pressed) && pressed)
+            if (controller.TryGetFeatureValue(button, out var pressed) && pressed)
                 return true;
         }
         return false;
@@ -42,6 +51,10 @@ public class QuestXRInput : MonoBehaviour
 
     private void RecenterYaw()
     {
+        var eyeCamera = GetComponent<UnityChanEyeCamera>();
+        if (eyeCamera && eyeCamera.Recenter())
+            return;
+
         var camera = Camera.main;
         if (!camera)
             return;
