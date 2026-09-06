@@ -113,3 +113,7 @@ InitTestScene*.unity*
 .env.local
 # スモークテストの結果ファイル
 SmokeTest*Result.json
+
+# Meta XR generates machine-local Dev Agent settings (includes an access token).
+/Assets/Resources/DevAgentSettings.asset
+/Assets/Resources/DevAgentSettings.asset.meta

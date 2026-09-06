@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using Livisor.Shared.Common;
 using Livisor.Shared.DTO;
+using Livisor.Device;
 using UnityEngine;
 
 /// <summary>
@@ -23,6 +24,7 @@ public class TimelineReceiver : MonoBehaviour
 
     // 未設定ならシーン内の StageDirector を探し、それも無ければログ出力だけの仮実装にする。
     [SerializeField] private StageDirector _stageDirector;
+    [SerializeField] private DeviceCommandExample _device;
 
     private IRoomClient _client;
     private IMediaPlayer _player;
@@ -85,7 +87,11 @@ public class TimelineReceiver : MonoBehaviour
         foreach (var entry in patch.Entries)
         {
             if (entry.Key == RoomStateKeys.Volume)
+            {
                 _player.ChangeVolume(entry.Value);
+                if (entry.Value.Kind == ActionValueKind.Number && _device != null)
+                    _device.SetVolume(entry.Value.Number);
+            }
         }
     }
 
@@ -102,6 +108,7 @@ public class TimelineReceiver : MonoBehaviour
         }
 
         _player.Play(state.Playing);
+        if (_device != null) _device.ApplyPlaying(state.Playing);
 
         if (TimelinePlayback.TryGetPendingAction(state, out var delaySeconds, out var action))
             _pendingAction = StartCoroutine(FireAfter(delaySeconds, action));
@@ -128,10 +135,13 @@ public class TimelineReceiver : MonoBehaviour
                     break;
                 }
                 _player.Play(action.Value.Bool);
+                if (_device != null) _device.ApplyPlaying(action.Value.Bool);
                 break;
 
             case ActionType.VolumeChange:
                 _player.ChangeVolume(action.Value);
+                if (action.Value.Kind == ActionValueKind.Number && _device != null)
+                    _device.SetVolume(action.Value.Number);
                 // 予約で変えた音量は状態同期にも書き戻す（RoomStateKeys.Volume のコメント参照）。
                 // 全員が同じ予約を持っているので、それぞれが同じ値を publish する。
                 try

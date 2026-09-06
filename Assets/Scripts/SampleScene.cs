@@ -1,32 +1,24 @@
 using System;
-using MagicOnion;
-using MagicOnion.Client;
-using Livisor.Shared;
-using Livisor.Shared.UnaryServices;
+using Livisor;
 using UnityEngine;
 
 public class SampleScene : MonoBehaviour
 {
+    public string serverAddress = ConnectivityCheck.DefaultServerAddress;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     async void Start()
     {
         try
         {
-            var channel = GrpcChannelx.ForAddress("http://localhost:5210");
-            var client = MagicOnionClient.Create<IMyFirstService>(channel);
-
-            var result = await client.SumAsync(100, 200);
-            Debug.Log($"100 + 200 = {result}");
+            var result = await ConnectivityCheck.CheckServerAsync(serverAddress, destroyCancellationToken);
+            Debug.Log($"[Livisor] Server 疎通確認成功: {serverAddress}, 100 + 200 = {result}");
+        }
+        catch (OperationCanceledException) when (destroyCancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception e)
         {
             Debug.LogException(e);
         }
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
     }
 }

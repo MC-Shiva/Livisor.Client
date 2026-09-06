@@ -36,8 +36,15 @@ namespace Livisor.Device
         Task _initializationTask;
         CancellationTokenSource _connectionCts;
         int _connectionGeneration;
+        Task _sendTail = Task.CompletedTask;
+        bool? _lastAppliedPlaying;
+
+        public int SuccessfulCommandCount { get; private set; }
+        public string LastResponse { get; private set; }
+        public string LastError { get; private set; }
 
         public bool IsReachable { get; private set; }
+        public string ResolvedHost => _client?.Host;
 
         void OnEnable()
         {
@@ -46,6 +53,8 @@ namespace Livisor.Device
 
             CancelConnection();
             IsReachable = false;
+            _lastAppliedPlaying = null;
+            LastError = null;
             int generation = ++_connectionGeneration;
             _connectionCts = new CancellationTokenSource();
             _initializationTask = InitializeAsync(
@@ -141,6 +150,25 @@ namespace Livisor.Device
         public async void SetVolume(int percent)
             => await SafeSend(client => client.SendVolumeAsync(percent));
 
+        // TransportState is a snapshot: repeated playing=true must not restart the Pi's file.
+        public async void ApplyPlaying(bool playing)
+            => await SafeSend(async client =>
+            {
+                if (_lastAppliedPlaying == playing) return null;
+                string response = playing ? await client.SendStartAsync() : await client.SendStopAsync();
+                _lastAppliedPlaying = playing;
+                return response;
+            });
+
+        public Task StopAndWaitAsync() => SafeSend(async client =>
+        {
+            string response = await client.SendStopAsync();
+            _lastAppliedPlaying = false;
+            return response;
+        });
+
+        public Task WaitForCommandsAsync() => _sendTail;
+
         /// <summary>UI の Slider(0-1) から直接つなぐ用。</summary>
         public async void SetVolumeNormalized(float value)
             => await SafeSend(client =>
@@ -158,13 +186,22 @@ namespace Livisor.Device
         public async void ScheduleStartAt(string time)
             => await SafeSend(client => client.SendStartAsync(time));
 
-        async Task SafeSend(Func<LivisorDeviceClient, Task<string>> send)
+        Task SafeSend(Func<LivisorDeviceClient, Task<string>> send)
+        {
+            // Preserve UI/transport order even when initialization or an earlier TCP reply is pending.
+            var pending = SendAfterAsync(_sendTail, send);
+            _sendTail = pending;
+            return pending;
+        }
+
+        async Task SendAfterAsync(Task previous, Func<LivisorDeviceClient, Task<string>> send)
         {
             try
             {
                 int generation = _connectionGeneration;
                 var client = _client;
                 var initialization = _initializationTask;
+                await previous;
                 if (initialization == null)
                     throw new InvalidOperationException(
                         "Device接続GameObjectが有効ではありません");
@@ -176,7 +213,13 @@ namespace Livisor.Device
                 if (!IsReachable || client == null)
                     throw new InvalidOperationException("Deviceとの接続確認が完了していません");
 
-                await send(client);
+                string response = await send(client);
+                if (response != null)
+                {
+                    LastResponse = response;
+                    LastError = null;
+                    SuccessfulCommandCount++;
+                }
             }
             catch (OperationCanceledException)
             {
@@ -184,6 +227,7 @@ namespace Livisor.Device
             }
             catch (Exception e)
             {
+                LastError = e.Message;
                 Debug.LogException(e);
             }
         }

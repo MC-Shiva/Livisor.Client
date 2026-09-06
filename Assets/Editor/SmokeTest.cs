@@ -11,6 +11,14 @@ using UnityEngine;
 /// </summary>
 public static class SmokeTest
 {
+    [MenuItem("Livisor/Smoke Test (Live and Device, 5 minutes)")]
+    public static void RunLiveDevice()
+    {
+        EditorSceneManager.OpenScene("Assets/Admin/Scenes/Admin.unity");
+        new GameObject("SmokeTestLiveDeviceDriver").AddComponent<SmokeTestLiveDeviceDriver>();
+        EditorApplication.EnterPlaymode();
+    }
+
     [MenuItem("Livisor/Smoke Test")]
     public static void Run()
     {
