@@ -11,8 +11,10 @@ public class TimelineRowModel
     public int Seconds;
     public int Centiseconds;
 
-    public ActionType Action = ActionType.Play;
-    public string NumberText = "0";
+    // 既定は音量 100 にする。既定を play=false にすると、未編集のまま SCHEDULE を押したときに
+    // 「再生開始 0 秒で停止」という予約が送られてしまうため。
+    public ActionType Action = ActionType.VolumeChange;
+    public string NumberText = "100";
     public bool BoolValue;
     public string TextValue = string.Empty;
 }

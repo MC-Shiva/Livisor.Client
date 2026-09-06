@@ -1,0 +1,139 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &100000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400000}
+  - component: {fileID: 11400000}
+  m_Layer: 0
+  m_Name: AudiencePenlightRig
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &400000
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 400001}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54637c8b9aef4012c3456789abcdef01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _material: {fileID: 2100000, guid: 76859eadbc014234e56789abcdef0123, type: 2}
+  _maxInstancesPerDraw: 511
+  _useMainCameraForViewerExclusion: 1
+  _appearance:
+    colorMode: 2
+    baseColor: {r: 0.1, g: 1, b: 0.35, a: 1}
+    randomColorPalette:
+    - {r: 1, g: 0.12, b: 0.18, a: 1}
+    - {r: 0.1, g: 0.45, b: 1, a: 1}
+    - {r: 0.15, g: 1, b: 0.35, a: 1}
+    - {r: 1, g: 0.75, b: 0.08, a: 1}
+    - {r: 0.95, g: 0.15, b: 1, a: 1}
+    audioReactive:
+      input: 1
+      lowLevelColor: {r: 0.02, g: 0.08, b: 0.35, a: 1}
+      highLevelColor: {r: 1, g: 0.12, b: 0.75, a: 1}
+      gain: 1.25
+      attackSpeed: 8
+      releaseSpeed: 2.5
+      perStickColorSpread: 0.15
+      minimumEmissionMultiplier: 0.6
+      maximumEmissionMultiplier: 1.8
+      colorUpdateRateHz: 30
+    emissionIntensity: 2
+    randomSeed: 12345
+  _motion:
+    direction: 1
+    customAxis: {x: 0, y: 0, z: 1}
+    swingAngleDegrees: 55
+    directionRandomness: 0.15
+    armLength: 0.35
+    bpm: 120
+    beatsPerSwing: 2
+    rhythm: 0
+    timingOffsetSeconds: 0.05
+    rhythmNoiseAmount: 0.1
+--- !u!1 &100001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400001}
+  - component: {fileID: 11400001}
+  m_Layer: 0
+  m_Name: Arc Audience Zone
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &400001
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 400000}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &11400001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32415a6978cd4ef0a123456789abcdef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _layout:
+    layoutMode: 1
+    blockCount: {x: 7, y: 3}
+    seatPerBlock: {x: 8, y: 12}
+    seatPitch: {x: 0.35, y: 0.45}
+    aisleWidth: {x: 0.65, y: 0.8}
+    rowHeight: 0.025
+    shoulderHeight: 0.95
+    arcRadius: 4.5
+    arcAngle: 120
+    viewerExclusionRadius: 1
+  _groupTimingOffsetSeconds: 0

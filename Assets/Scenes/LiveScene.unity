@@ -454,6 +454,8 @@ MonoBehaviour:
   - {fileID: 100000, guid: f1efd132732334185ad79bc7263913ec, type: 3}
   - {fileID: 100000, guid: c70aff9297e6d4e9fa6e82c0038ded02, type: 3}
   - {fileID: 100000, guid: 0291ac2d4e1e54df6bfa4776e3683a24, type: 3}
+  - {fileID: 100000, guid: 8796afbecd124345f6789abcdef01234, type: 3}
+  audiencePenlightPlacement: {fileID: 2134378601}
   cameraPoints:
   - {fileID: 1750265709}
   - {fileID: 2112224815}
@@ -475,6 +477,7 @@ Transform:
   - {fileID: 1750265709}
   - {fileID: 2112224815}
   - {fileID: 1821063586}
+  - {fileID: 2134378601}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!95 &2134378502
@@ -516,6 +519,37 @@ MonoBehaviour:
   blendDistance: 0
   weight: 1
   sharedProfile: {fileID: 11400000, guid: 4cd2a161f9814fbe85983388a8ef701a, type: 2}
+--- !u!1 &2134378600
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2134378601}
+  m_Layer: 0
+  m_Name: Audience Penlight Placement
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2134378601
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2134378600}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0.9}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2134378501}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

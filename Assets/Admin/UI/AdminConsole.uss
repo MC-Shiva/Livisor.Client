@@ -390,3 +390,17 @@
  .status-label.status-error {
      color: var(--color-danger);
  }
+/* 再生・停止・音量の横並び（Transport / Volume パネル） */
+.button-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.button-row > .action-button {
+    margin-right: 8px;
+}
+
+.volume-input {
+    width: 96px;
+    margin-right: 8px;
+}

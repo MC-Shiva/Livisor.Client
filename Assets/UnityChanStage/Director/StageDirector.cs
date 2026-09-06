@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
+using Livisor.Live.Penlights;
 using UnityEngine.SceneManagement;
 
 public class StageDirector : MonoBehaviour
@@ -19,6 +21,9 @@ public class StageDirector : MonoBehaviour
     public GameObject[] prefabsNeedsActivation;
     public GameObject[] prefabsOnTimeline;
     public GameObject[] miscPrefabs;
+
+    // Audience placement.
+    public Transform audiencePenlightPlacement;
 
     // Camera points.
     public Transform[] cameraPoints;
@@ -49,7 +54,23 @@ public class StageDirector : MonoBehaviour
         for (var i = 0; i < prefabsOnTimeline.Length; i++)
             objectsOnTimeline[i] = (GameObject)Instantiate(prefabsOnTimeline[i]);
 
-        foreach (var p in miscPrefabs) Instantiate(p);
+        var audiencePenlights = new List<AudiencePenlightController>();
+        foreach (var p in miscPrefabs)
+        {
+            var instance = (GameObject)Instantiate(p);
+            audiencePenlights.AddRange(
+                instance.GetComponentsInChildren<AudiencePenlightController>(true));
+        }
+
+        // Stage, camera, and all miscellaneous prefabs now have their final hierarchy.
+        // Initialize penlights last so their world-space positions and bounds are baked
+        // from the explicit placement transform.
+        var penlightAudioSource = new ReaktionPenlightAudioSource(musicPlayer);
+        foreach (var audiencePenlight in audiencePenlights)
+        {
+            audiencePenlight.SetAudioSource(penlightAudioSource);
+            audiencePenlight.InitializeAt(audiencePenlightPlacement);
+        }
 
         if (enableUnityChanView)
             SetupUnityChanView();
@@ -104,6 +125,71 @@ public class StageDirector : MonoBehaviour
     {
         foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
             source.Play();
+    }
+
+    // === サーバーからの指示で操作するための入口（TimelineReceiver → StageMediaPlayer が呼ぶ）===
+    // メソッド名は PR #9（ライブの再生停止・音量調整）と同じにしてあり、PR #9 を取り込むときはそちらの実装で置き換える。
+
+    // 一時停止前の再生速度。再開時に元へ戻す。
+    float resumeTimeScale = 1.0f;
+    bool isPerformancePaused;
+
+    /// <summary>現在位置で音楽とライブ演出を一時停止する。音源は位置を保持して止め、演出は timeScale でまとめて止める。</summary>
+    public void PausePerformance()
+    {
+        if (isPerformancePaused)
+            return;
+
+        if (Time.timeScale > 0.0f)
+            resumeTimeScale = Time.timeScale;
+
+        foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
+            source.Pause();
+
+        Time.timeScale = 0.0f;
+        isPerformancePaused = true;
+    }
+
+    /// <summary>一時停止位置から音楽とライブ演出を再開する。まだ一度も鳴らしていなければ先頭から鳴らす。</summary>
+    public void ResumePerformance()
+    {
+        if (!isPerformancePaused)
+            return;
+
+        Time.timeScale = resumeTimeScale > 0.0f ? resumeTimeScale : 1.0f;
+
+        foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
+        {
+            if (source.time > 0.0f)
+                source.UnPause();
+            else
+                source.Play();
+        }
+
+        isPerformancePaused = false;
+    }
+
+    /// <summary>
+    /// 観客に聞こえる Main 音源の音量だけを 0〜100 の整数で変える。
+    /// Spectrum（演出の解析用音源）には触れない。範囲外は無視する。
+    /// </summary>
+    public void SetMainVolume(int percent)
+    {
+        if (percent < 0 || percent > 100)
+        {
+            Debug.LogWarning($"[StageDirector] Volume must be an integer from 0 to 100: {percent}", this);
+            return;
+        }
+
+        var main = musicPlayer.transform.Find("Main");
+        var source = main != null ? main.GetComponent<AudioSource>() : null;
+        if (source == null)
+        {
+            Debug.LogError("MusicPlayer requires an AudioSource on child GameObject 'Main'.", musicPlayer);
+            return;
+        }
+
+        source.volume = percent / 100.0f;
     }
 
     public void ActivateProps()
