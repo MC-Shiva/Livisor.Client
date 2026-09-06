@@ -1,40 +1,43 @@
 ﻿using UnityEngine;
-using System.Collections;
 
-
-public class Visualizer : MonoBehaviour
+[RequireComponent(typeof(Renderer))]
+public sealed class Visualizer : MonoBehaviour
 {
-	public Reaktion.ReaktorLink spectrum1;
-	public Reaktion.ReaktorLink spectrum2;
-	public Reaktion.ReaktorLink spectrum3;
-	public Reaktion.ReaktorLink spectrum4;
-	public Vector4 spectrum;
+    private static readonly int SpectraId = Shader.PropertyToID("_Spectra");
+    private static readonly int CenterId = Shader.PropertyToID("_Center");
 
-	void Update()
-	{
-		spectrum = new Vector4(spectrum1.Output, spectrum2.Output, spectrum3.Output, spectrum4.Output);
-	}
+    public Reaktion.ReaktorLink spectrum1;
+    public Reaktion.ReaktorLink spectrum2;
+    public Reaktion.ReaktorLink spectrum3;
+    public Reaktion.ReaktorLink spectrum4;
+    public Vector4 spectrum;
 
-	void OnWillRenderObject()
-	{
-		if (GetComponent<Renderer>() == null || GetComponent<Renderer>().sharedMaterial == null) { return; }
-		Material mat = GetComponent<Renderer>().material;
+    private Renderer targetRenderer;
+    private MaterialPropertyBlock propertyBlock;
 
-		if (Vector4.Dot(spectrum, spectrum) <= 1.0f)
-		{
-			mat.SetVector("_Spectra", spectrum);
-		}
+    private void Awake()
+    {
+        targetRenderer = GetComponent<Renderer>();
+        propertyBlock = new MaterialPropertyBlock();
 
-		Camera cam = Camera.current;
-		if (cam != null) {
-			Matrix4x4 view = cam.worldToCameraMatrix;
-			Matrix4x4 proj = cam.projectionMatrix;
-			proj[2, 0] = proj[2, 0] * 0.5f + proj[3, 0] * 0.5f;
-			proj[2, 1] = proj[2, 1] * 0.5f + proj[3, 1] * 0.5f;
-			proj[2, 2] = proj[2, 2] * 0.5f + proj[3, 2] * 0.5f;
-			proj[2, 3] = proj[2, 3] * 0.5f + proj[3, 3] * 0.5f;
-			Matrix4x4 viewprojinv = (proj * view).inverse;
-			mat.SetMatrix("_ViewProjectInverse", viewprojinv);
-		}
-	}
+        spectrum1.Initialize(this);
+        spectrum2.Initialize(this);
+        spectrum3.Initialize(this);
+        spectrum4.Initialize(this);
+    }
+
+    private void LateUpdate()
+    {
+        spectrum = new Vector4(
+            Mathf.Clamp01(spectrum1.Output),
+            Mathf.Clamp01(spectrum2.Output),
+            Mathf.Clamp01(spectrum3.Output),
+            Mathf.Clamp01(spectrum4.Output)
+        );
+
+        targetRenderer.GetPropertyBlock(propertyBlock);
+        propertyBlock.SetVector(SpectraId, spectrum);
+        propertyBlock.SetVector(CenterId, transform.position);
+        targetRenderer.SetPropertyBlock(propertyBlock);
+    }
 }

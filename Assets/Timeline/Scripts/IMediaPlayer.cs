@@ -6,7 +6,8 @@ using Livisor.Shared.Common;
 /// </summary>
 public interface IMediaPlayer
 {
-    void Start(ActionValue value);
-    void Stop(ActionValue value);
+    /// <summary>再生と停止を切り替える。true=再生 / false=停止。</summary>
+    void Play(bool isPlaying);
+
     void ChangeVolume(ActionValue value);
 }

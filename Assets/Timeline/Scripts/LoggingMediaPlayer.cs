@@ -7,9 +7,7 @@ using UnityEngine;
 /// </summary>
 public class LoggingMediaPlayer : IMediaPlayer
 {
-    public void Start(ActionValue value) => Debug.Log($"[Play] START (value={value})");
-
-    public void Stop(ActionValue value) => Debug.Log($"[Play] STOP (value={value})");
+    public void Play(bool isPlaying) => Debug.Log($"[Play] {(isPlaying ? "PLAY" : "STOP")}");
 
     public void ChangeVolume(ActionValue value) => Debug.Log($"[Play] VOLUME -> {value}");
 }
