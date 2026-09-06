@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
+using Livisor.Live.Penlights;
 using UnityEngine.SceneManagement;
 
 public class StageDirector : MonoBehaviour
@@ -17,6 +19,9 @@ public class StageDirector : MonoBehaviour
     public GameObject[] prefabsNeedsActivation;
     public GameObject[] prefabsOnTimeline;
     public GameObject[] miscPrefabs;
+
+    // Audience placement.
+    public Transform audiencePenlightPlacement;
 
     // Camera points.
     public Transform[] cameraPoints;
@@ -46,7 +51,23 @@ public class StageDirector : MonoBehaviour
         for (var i = 0; i < prefabsOnTimeline.Length; i++)
             objectsOnTimeline[i] = (GameObject)Instantiate(prefabsOnTimeline[i]);
 
-        foreach (var p in miscPrefabs) Instantiate(p);
+        var audiencePenlights = new List<AudiencePenlightController>();
+        foreach (var p in miscPrefabs)
+        {
+            var instance = (GameObject)Instantiate(p);
+            audiencePenlights.AddRange(
+                instance.GetComponentsInChildren<AudiencePenlightController>(true));
+        }
+
+        // Stage, camera, and all miscellaneous prefabs now have their final hierarchy.
+        // Initialize penlights last so their world-space positions and bounds are baked
+        // from the explicit placement transform.
+        var penlightAudioSource = new ReaktionPenlightAudioSource(musicPlayer);
+        foreach (var audiencePenlight in audiencePenlights)
+        {
+            audiencePenlight.SetAudioSource(penlightAudioSource);
+            audiencePenlight.InitializeAt(audiencePenlightPlacement);
+        }
     }
 
     void Update()
