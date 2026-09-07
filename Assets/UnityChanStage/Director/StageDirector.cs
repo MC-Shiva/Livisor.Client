@@ -77,6 +77,10 @@ public class StageDirector : MonoBehaviour
         // Initialize penlights last so their world-space positions and bounds are baked
         // from the explicit placement transform.
         var penlightAudioSource = new ReaktionPenlightAudioSource(musicPlayer);
+        foreach (var playerPenlight in
+                 mainCameraRig.GetComponentsInChildren<PlayerPenlightController>(true))
+            playerPenlight.SetAudioSource(penlightAudioSource);
+
         foreach (var audiencePenlight in audiencePenlights)
         {
             audiencePenlight.SetAudioSource(penlightAudioSource);
