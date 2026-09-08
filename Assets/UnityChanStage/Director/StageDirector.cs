@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Livisor.Live.Penlights;
+using Livisor.Live.Effects;
 
 public class StageDirector : MonoBehaviour
 {
@@ -20,6 +21,9 @@ public class StageDirector : MonoBehaviour
     public GameObject[] prefabsNeedsActivation;
     public GameObject[] prefabsOnTimeline;
     public GameObject[] miscPrefabs;
+
+    [SerializeField] SilverStreamerController silverStreamers;
+    bool finaleFired;
 
     // Audience placement.
     public Transform audiencePenlightPlacement;
@@ -85,6 +89,16 @@ public class StageDirector : MonoBehaviour
         if (enableUnityChanView)
             SetupUnityChanView();
 
+        if (silverStreamers == null)
+        {
+            var prefab = Resources.Load<GameObject>("SilverStreamer");
+            if (prefab != null)
+                silverStreamers = Instantiate(prefab, transform.position, transform.rotation, transform)
+                    .GetComponent<SilverStreamerController>();
+            else
+                Debug.LogError("SilverStreamer prefab is missing.", this);
+        }
+
         // 最初の再生操作を受け取るまで、ライブを先頭で待機させる。
         PausePerformance();
     }
@@ -136,6 +150,7 @@ public class StageDirector : MonoBehaviour
 
     public void StartMusic()
     {
+        finaleFired = false;
         if (musicPlayerController != null)
         {
             musicPlayerController.PlayAll();
@@ -247,8 +262,19 @@ public class StageDirector : MonoBehaviour
         }
     }
 
+    /// <summary>Manually fire at any time, including after the performance has ended.</summary>
+    public void FireSilverStreamers()
+    {
+        if (silverStreamers != null) silverStreamers.Fire();
+    }
+
     public void EndPerformance()
     {
+        if (!finaleFired)
+        {
+            finaleFired = true;
+            FireSilverStreamers();
+        }
         // 今回はシーンを自動リロードせず、最終位置で停止する。
         PausePerformance();
     }

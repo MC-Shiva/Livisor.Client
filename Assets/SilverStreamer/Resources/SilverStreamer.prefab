@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4000}
+  - component: {fileID: 114000}
+  m_Layer: 0
+  m_Name: SilverStreamer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4000
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &114000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6c9fe81b4f04924b88619493e3bfc9e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  launchPositions:
+  - {x: -4, y: 0.3, z: 2.8}
+  - {x: 4, y: 0.3, z: 2.8}
+  - {x: -2, y: 0.3, z: 4}
+  - {x: 2, y: 0.3, z: 4}
+  countPerLauncher: 100
+  maxParticles: 800
+  lifetime: 12
+  launchHeight: 20
+  gravityMultiplier: 0.12
+  launchElevation: 60
+  launchAzimuth: 0
+  horizontalSpread: 90
+  verticalSpread: 24
+  airSpreadAcceleration: 0.6
+  areaCenter: {x: 0, y: 5, z: 8}
+  areaSize: {x: 15, y: 10, z: 25}
+  restrictToArea: 0
+  collisionLayers:
+    serializedVersion: 2
+    m_Bits: 1048576
+  collisionRadiusScale: 1.05
+  useFallbackFloor: 0
+  floorHeight: 0
+  sway: 0.25
+  length: 0.325
+  width: 0.035
+  segments: 12
+  bend: 0.045
+  twist: 1.2
+  flutterSpeed: 4

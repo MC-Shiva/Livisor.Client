@@ -32,13 +32,17 @@ public sealed class DemoSceneController : MonoBehaviour
         if (_playOnStart)
             ResumePerformance();
 
-        Debug.Log("[DemoScene] S=resume, P=pause", this);
+        Debug.Log("[DemoScene] S=resume, P=pause, T=silver streamers, E=finale", this);
     }
 
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.S))
             ResumePerformance();
+        if (Input.GetKeyDown(KeyCode.T))
+            _stageDirector.FireSilverStreamers();
+        if (Input.GetKeyDown(KeyCode.E))
+            _stageDirector.EndPerformance();
         if (Input.GetKeyDown(KeyCode.P))
             PausePerformance();
     }
