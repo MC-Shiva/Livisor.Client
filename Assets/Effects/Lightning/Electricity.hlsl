@@ -54,4 +54,11 @@ void Electricity_float(float4 Color, float4 UV, float Time, float Contrast,
     BaseColor = max(Color.rgb, 0.0) * mask;
     Alpha = 1.0;
 }
+// VFX Graph supplies particle alpha to Layer. UV.z is not carried by strip UVs.
+void LightningStripSurface_float(float4 Color, float4 UV, float Time, float Contrast,
+    float Speed, float Layer, float4 EdgeColor, out float3 BaseColor, out float Alpha)
+{
+    Electricity_float(Color, float4(UV.xy, max(Layer, 0.0), 0.0), Time,
+        Contrast, Speed, 3.0, EdgeColor, BaseColor, Alpha);
+}
 #endif

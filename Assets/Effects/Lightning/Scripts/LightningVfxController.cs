@@ -8,7 +8,7 @@ using UnityEngine;
 public class LightningVfxController : MonoBehaviour
 {
     [Header("描画負荷")]
-    [Tooltip("Quest3 は Shader Graph + 1 メッシュ。DesktopEnhanced は VFX Graph の火花と環境光を追加。")]
+    [Tooltip("雷本体はVFX Graph。Quest3は着弾を1メッシュで描画。DesktopEnhancedはGPU火花と環境光を追加。")]
     [SerializeField] private LightningBolt.Quality _quality = LightningBolt.Quality.Quest3;
     [Header("雷撃")]
     [SerializeField, Min(0.1f)] private float _startHeight = 12f;
