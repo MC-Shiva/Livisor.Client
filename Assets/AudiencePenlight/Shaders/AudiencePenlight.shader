@@ -2,6 +2,7 @@ Shader "Livisor/Audience Penlight"
 {
     Properties
     {
+        [HDR] _BaseColor("Base Color", Color) = (0.1, 0.45, 1, 1)
         _EmissionIntensity("Emission Intensity", Range(0, 8)) = 2
     }
 
@@ -33,6 +34,7 @@ Shader "Livisor/Audience Penlight"
             StructuredBuffer<float4> _InstanceColorBuffer;
 
             CBUFFER_START(UnityPerMaterial)
+                float4 _BaseColor;
                 float _EmissionIntensity;
                 uint _InstanceIDOffset;
             CBUFFER_END
@@ -62,7 +64,7 @@ Shader "Livisor/Audience Penlight"
                 #else
                     // Material preview and non-instanced fallback do not have an instance ID
                     // or a bound per-instance color buffer.
-                    output.color = float4(1.0, 1.0, 1.0, 1.0);
+                    output.color = _BaseColor;
                 #endif
 
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
