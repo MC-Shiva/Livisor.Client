@@ -1,12 +1,15 @@
 ﻿using UnityEngine;
 using System.Collections;
-using UnityEngine.SceneManagement;
+using System.Collections.Generic;
+using Livisor.Live.Penlights;
 
 public class StageDirector : MonoBehaviour
 {
     // Control options.
     public bool ignoreFastForward = true;
     public bool useDirectorCameraInEditor = true;
+    [Tooltip("Allow C or the Quest secondary button (B/Y) to switch to Unitychan's eyes.")]
+    public bool enableUnityChanView;
     public Vector3 questXRStageOrigin = new Vector3(0.0f, 0.0f, 4.27f);
     public Vector3 questXRStageRotation = new Vector3(0.0f, 180.0f, 0.0f);
     public Vector3 questXRPreviewHeadPosition = new Vector3(0.0f, 1.35f, 0.0f);
@@ -18,6 +21,9 @@ public class StageDirector : MonoBehaviour
     public GameObject[] prefabsOnTimeline;
     public GameObject[] miscPrefabs;
 
+    // Audience placement.
+    public Transform audiencePenlightPlacement;
+
     // Camera points.
     public Transform[] cameraPoints;
 
@@ -26,15 +32,27 @@ public class StageDirector : MonoBehaviour
 
     // Objects to be controlled.
     GameObject musicPlayer;
+    MusicPlayerController musicPlayerController;
+    GameObject mainCameraRig;
     CameraSwitcher mainCameraSwitcher;
     ScreenOverlay[] screenOverlays;
     GameObject[] objectsNeedsActivation;
     GameObject[] objectsOnTimeline;
 
+    // 一時停止前の再生速度。再開時に元へ戻す。
+    float resumeTimeScale = 1.0f;
+    bool isPerformancePaused;
+
+    public bool IsPerformancePaused => isPerformancePaused;
+    public MusicPlayerController MusicPlayerController => musicPlayerController;
+
     void Awake()
     {
         // Instantiate the prefabs.
         musicPlayer = (GameObject)Instantiate(musicPlayerPrefab);
+        musicPlayerController = musicPlayer.GetComponent<MusicPlayerController>();
+        if (musicPlayerController == null)
+            Debug.LogError("MusicPlayer prefab requires MusicPlayerController.", musicPlayer);
 
         SetupCameraRig();
 
@@ -46,7 +64,29 @@ public class StageDirector : MonoBehaviour
         for (var i = 0; i < prefabsOnTimeline.Length; i++)
             objectsOnTimeline[i] = (GameObject)Instantiate(prefabsOnTimeline[i]);
 
-        foreach (var p in miscPrefabs) Instantiate(p);
+        var audiencePenlights = new List<AudiencePenlightController>();
+        foreach (var p in miscPrefabs)
+        {
+            var instance = (GameObject)Instantiate(p);
+            audiencePenlights.AddRange(
+                instance.GetComponentsInChildren<AudiencePenlightController>(true));
+        }
+
+        // Stage, camera, and all miscellaneous prefabs now have their final hierarchy.
+        // Initialize penlights last so their world-space positions and bounds are baked
+        // from the explicit placement transform.
+        var penlightAudioSource = new ReaktionPenlightAudioSource(musicPlayer);
+        foreach (var audiencePenlight in audiencePenlights)
+        {
+            audiencePenlight.SetAudioSource(penlightAudioSource);
+            audiencePenlight.InitializeAt(audiencePenlightPlacement);
+        }
+
+        if (enableUnityChanView)
+            SetupUnityChanView();
+
+        // 最初の再生操作を受け取るまで、ライブを先頭で待機させる。
+        PausePerformance();
     }
 
     void Update()
@@ -63,14 +103,14 @@ public class StageDirector : MonoBehaviour
 #if UNITY_EDITOR
         if (useDirectorCameraInEditor)
         {
-            var cameraRig = (GameObject)Instantiate(mainCameraRigPrefab);
-            mainCameraSwitcher = cameraRig.GetComponentInChildren<CameraSwitcher>();
-            screenOverlays = cameraRig.GetComponentsInChildren<ScreenOverlay>();
+            mainCameraRig = (GameObject)Instantiate(mainCameraRigPrefab);
+            mainCameraSwitcher = mainCameraRig.GetComponentInChildren<CameraSwitcher>();
+            screenOverlays = mainCameraRig.GetComponentsInChildren<ScreenOverlay>();
             return;
         }
 #endif
 
-        QuestXRStageRig.Create(
+        mainCameraRig = QuestXRStageRig.Create(
             questXRStageOrigin,
             Quaternion.Euler(questXRStageRotation),
             questXRPreviewHeadPosition);
@@ -78,10 +118,87 @@ public class StageDirector : MonoBehaviour
         screenOverlays = new ScreenOverlay[0];
     }
 
+    void SetupUnityChanView()
+    {
+        foreach (var performer in objectsOnTimeline)
+        {
+            var animator = performer.GetComponentInChildren<Animator>();
+            if (!animator || !animator.isHuman)
+                continue;
+
+            var eyeCamera = mainCameraRig.AddComponent<UnityChanEyeCamera>();
+            eyeCamera.Initialize(mainCameraRig.GetComponentInChildren<Camera>(), animator);
+            return;
+        }
+
+        Debug.LogWarning("Unitychan eye camera needs a humanoid performer on the stage timeline.", this);
+    }
+
     public void StartMusic()
     {
+        if (musicPlayerController != null)
+        {
+            musicPlayerController.PlayAll();
+            return;
+        }
+
         foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
             source.Play();
+    }
+
+    /// <summary>現在位置で音楽とライブ演出を一時停止する。音源は位置を保持して止め、演出は timeScale でまとめて止める。</summary>
+    public void PausePerformance()
+    {
+        if (isPerformancePaused)
+            return;
+
+        if (Time.timeScale > 0.0f)
+            resumeTimeScale = Time.timeScale;
+
+        if (musicPlayerController != null)
+            musicPlayerController.PauseAll();
+        else
+            foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
+                source.Pause();
+
+        Time.timeScale = 0.0f;
+        isPerformancePaused = true;
+    }
+
+    /// <summary>一時停止位置から音楽とライブ演出を再開する。まだ一度も鳴らしていなければ先頭から鳴らす。</summary>
+    public void ResumePerformance()
+    {
+        if (!isPerformancePaused)
+            return;
+
+        Time.timeScale = resumeTimeScale > 0.0f ? resumeTimeScale : 1.0f;
+
+        if (musicPlayerController != null)
+            musicPlayerController.ResumeAll();
+        else
+        {
+            foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
+            {
+                if (source.time > 0.0f)
+                    source.UnPause();
+                else
+                    source.Play();
+            }
+        }
+
+        isPerformancePaused = false;
+    }
+
+    /// <summary>Spectrum には触れず、聞こえる Main 音源だけを変更する。</summary>
+    public void SetMainVolume(int percent)
+    {
+        if (musicPlayerController == null)
+        {
+            Debug.LogError("MusicPlayerController is not available.", this);
+            return;
+        }
+
+        musicPlayerController.SetMainVolume(percent);
     }
 
     public void ActivateProps()
@@ -132,7 +249,14 @@ public class StageDirector : MonoBehaviour
 
     public void EndPerformance()
     {
-        //Application.LoadLevel(0);
-        SceneManager.LoadScene(0);
+        // 今回はシーンを自動リロードせず、最終位置で停止する。
+        PausePerformance();
+    }
+
+    void OnDestroy()
+    {
+        // Play Mode 終了や別シーンへの遷移後にグローバルな timeScale を残さない。
+        if (isPerformancePaused)
+            Time.timeScale = resumeTimeScale > 0.0f ? resumeTimeScale : 1.0f;
     }
 }

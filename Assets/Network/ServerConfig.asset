@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b6d6284f927f34693ae618548bd6c26d, type: 3}
   m_Name: ServerConfig
   m_EditorClassIdentifier: Assembly-CSharp::ServerConfig
-  _serverAddress: http://localhost:5210
+  _serverAddress: http://57.183.27.205:5210

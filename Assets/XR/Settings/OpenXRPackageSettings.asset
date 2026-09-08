@@ -1,5 +1,29 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-9053959233834521915
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92efb7dda02dc484c90845a437c4784e, type: 3}
+  m_Name: AutomaticDynamicResolutionFeature Android
+  m_EditorClassIdentifier: Unity.XR.OpenXR::UnityEngine.XR.OpenXR.Features.AutomaticDynamicResolutionFeature
+  m_enabled: 0
+  nameUi: Automatic Viewport Dynamic Resolution
+  version: 1.0.0
+  featureIdInternal: com.unity.openxr.feature.ViewportDynamicResolution
+  openxrExtensionStrings: XR_META_recommended_layer_resolution XR_ANDROID_recommended_resolution
+  company: Unity
+  priority: 0
+  targetOpenXRApiVersion: 
+  required: 0
+  customRuntimeLoaderName: 
+  m_MinResolutionScalar: 0.05
+  m_MaxResolutionScalar: 1
 --- !u!114 &-8885443147367875252
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -248,9 +272,10 @@ MonoBehaviour:
   m_Name: Android
   m_EditorClassIdentifier: Unity.XR.OpenXR::UnityEngine.XR.OpenXR.OpenXRSettings
   features:
-  - {fileID: 5986809242785387493}
-  - {fileID: -6240821920386312782}
-  - {fileID: 3732588039631217993}
+  - {fileID: 7485120070448139492}
+  - {fileID: -732439585466540804}
+  - {fileID: -771653504473341603}
+  - {fileID: -9053959233834521915}
   - {fileID: 2460571513140352713}
   - {fileID: -8215757005134924696}
   - {fileID: 2903847653411930505}
@@ -259,21 +284,21 @@ MonoBehaviour:
   - {fileID: 5908112140522784443}
   - {fileID: 8219548955617189742}
   - {fileID: -3468041050021985555}
-  - {fileID: 3505618294998854567}
+  - {fileID: -5848620562909319534}
   - {fileID: 1053277521893654352}
   - {fileID: -6419453835924714157}
   - {fileID: -5260198307862452403}
-  - {fileID: -3756084271851759195}
+  - {fileID: 3676630055600076843}
   - {fileID: 7233773520947251685}
-  - {fileID: 1308217872294555558}
+  - {fileID: -8469812334739068878}
   - {fileID: 6732776128745692718}
   - {fileID: 9107299508636951482}
-  - {fileID: -634889518118018583}
-  - {fileID: 2706479544931995176}
-  - {fileID: -3539343815183045219}
-  - {fileID: 3727537642535980937}
-  - {fileID: 2884593870038169051}
-  - {fileID: 7243498100245099698}
+  - {fileID: 6381235593906888713}
+  - {fileID: -1272044685344690305}
+  - {fileID: 7228965751023058458}
+  - {fileID: 7478347262718247302}
+  - {fileID: -32299960334378148}
+  - {fileID: -5884240855013622370}
   - {fileID: 6795251872807649351}
   - {fileID: 2893483869946049167}
   - {fileID: -2716543956398889115}
@@ -2825,7 +2850,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4710975c7840e7d499bbb3757c22b0a5, type: 3}
   m_Name: MetaXRSubsampledLayout Android
   m_EditorClassIdentifier: Oculus.VR::Meta.XR.MetaXRSubsampledLayout
-  m_enabled: 0
+  m_enabled: 1
   nameUi: Meta XR Subsampled Layout
   version: 0.0.1
   featureIdInternal: com.meta.openxr.feature.subsampledLayout
@@ -3221,35 +3246,35 @@ MonoBehaviour:
   features:
   - {fileID: -3287003881643078090}
   - {fileID: -5944321274498129140}
-  - {fileID: 6018280645390720621}
-  - {fileID: 2016906988614972874}
+  - {fileID: -97891510337067409}
+  - {fileID: -8218302402393273989}
   - {fileID: -4256079305404742393}
   - {fileID: 884734400239769771}
-  - {fileID: 8250828850341448362}
+  - {fileID: -8223672705996535964}
   - {fileID: -2126540497983850782}
   - {fileID: -6500770159769272106}
   - {fileID: -4899579248983624219}
-  - {fileID: -1342058846644210721}
+  - {fileID: -4071415221410806134}
   - {fileID: -5973995189504973804}
   - {fileID: -8885443147367875252}
-  - {fileID: -4468970645972030779}
+  - {fileID: -7095675833550308733}
   - {fileID: 8053935668689956068}
-  - {fileID: 8477345113372051095}
-  - {fileID: -895410411725465764}
-  - {fileID: 4985821146036440842}
-  - {fileID: -6320565450199454110}
+  - {fileID: -2911774148290678704}
+  - {fileID: 1756775111652205067}
+  - {fileID: 8157850527270355904}
+  - {fileID: -6660554532308032043}
   - {fileID: 7181215832576064441}
   - {fileID: 4626720638203255944}
-  - {fileID: -2248589733692256767}
+  - {fileID: -6347227789450839637}
   - {fileID: -4567015662043732459}
-  - {fileID: -2756701713704330383}
-  - {fileID: -88224581212136182}
+  - {fileID: -6012732941959527517}
+  - {fileID: -3749461453748193000}
   - {fileID: -7921616670693102855}
   - {fileID: 8964022961005975371}
   - {fileID: -7166201159372516406}
   - {fileID: -8395055270802508103}
   - {fileID: -544542722235655720}
-  - {fileID: 3745694514717064100}
+  - {fileID: 2242374999445177586}
   customLoaderName: 
   m_renderMode: 1
   m_latencyOptimization: 0
