@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -49,6 +50,14 @@ namespace Livisor.Live.Effects
         [SerializeField, Range(0, 3)] float twist = 1.2f;
         [SerializeField, Range(.1f, 10)] float flutterSpeed = 4;
 
+        [Header("Burst sound")]
+        [SerializeField] AudioClip burstSound;
+        [SerializeField, Range(0, 3)] float burstVolume = .7f;
+        [SerializeField, Range(-2, 2), Tooltip("射出に対する音の時差（秒）。負なら音を先に鳴らして射出を待ち、正なら射出後に音を鳴らします。")]
+        float soundTimingOffset = 0;
+        int reservedParticles;
+        AudioSource burstAudio;
+
         ParticleSystem particles;
         ParticleSystemRenderer particleRenderer;
         ParticleSystem.Particle[] buffer;
@@ -73,6 +82,12 @@ namespace Livisor.Live.Effects
             }
             var child = new GameObject("Ribbon Particles");
             child.transform.SetParent(transform, false);
+            burstAudio = child.AddComponent<AudioSource>();
+            burstAudio.playOnAwake = false;
+            burstAudio.loop = false;
+            burstAudio.spatialBlend = 0;
+            burstAudio.ignoreListenerPause = true;
+            if (burstSound != null) burstSound.LoadAudioData();
             particles = child.AddComponent<ParticleSystem>();
             particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             var main = particles.main;
@@ -176,6 +191,34 @@ namespace Livisor.Live.Effects
         public void Fire()
         {
             if (!Application.isPlaying || !isActiveAndEnabled || !Initialize()) return;
+            int available = Mathf.Max(0, maxParticles - particles.particleCount - reservedParticles);
+            int perLauncher = Mathf.Min(countPerLauncher, available / Mathf.Max(1, launchPositions.Length));
+            if (perLauncher <= 0 || launchPositions.Length == 0) return;
+            var launchers = (Vector3[])launchPositions.Clone();
+            reservedParticles += perLauncher * launchers.Length;
+            StartCoroutine(PlayBurst(perLauncher, launchers, Mathf.Clamp(soundTimingOffset, -2, 2),
+                burstSound, Mathf.Clamp(burstVolume, 0, 3)));
+        }
+
+        IEnumerator PlayBurst(int count, Vector3[] launchers, float offset, AudioClip clip, float volume)
+        {
+            // Reserve capacity before an early sound, so repeated requests cannot overbook the pool.
+            if (offset < 0)
+            {
+                if (clip != null) burstAudio.PlayOneShot(clip, volume);
+                yield return new WaitForSecondsRealtime(-offset);
+            }
+            reservedParticles -= count * launchers.Length;
+            EmitBurst(count, launchers);
+            if (offset >= 0)
+            {
+                if (offset > 0) yield return new WaitForSecondsRealtime(offset);
+                if (clip != null) burstAudio.PlayOneShot(clip, volume);
+            }
+        }
+
+        void EmitBurst(int perLauncher, Vector3[] launchers)
+        {
             // Keep the configured nominal height at the central elevation (before drag).
             float gravity = Mathf.Max(.01f, Physics.gravity.magnitude * gravityMultiplier);
             float verticalSpeed = Mathf.Sqrt(2 * gravity * launchHeight);
@@ -183,9 +226,7 @@ namespace Livisor.Live.Effects
             // Floors may have been instantiated while timeScale is zero, before a physics tick.
             Physics.SyncTransforms();
             particles.Play();
-            int available = Mathf.Max(0, maxParticles - particles.particleCount);
-            int perLauncher = Mathf.Min(countPerLauncher, available / Mathf.Max(1, launchPositions.Length));
-            foreach (var launcher in launchPositions)
+            foreach (var launcher in launchers)
             {
                 for (int i = 0; i < perLauncher; i++)
                 {
@@ -237,6 +278,9 @@ namespace Livisor.Live.Effects
 
         public void Clear()
         {
+            StopAllCoroutines();
+            reservedParticles = 0;
+            if (burstAudio != null) burstAudio.Stop();
             if (particles != null) particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
 

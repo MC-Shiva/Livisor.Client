@@ -49,7 +49,7 @@ MonoBehaviour:
   - {x: 4, y: 0.3, z: 2.8}
   - {x: -2, y: 0.3, z: 4}
   - {x: 2, y: 0.3, z: 4}
-  countPerLauncher: 100
+  countPerLauncher: 200
   maxParticles: 800
   lifetime: 12
   launchHeight: 20
@@ -75,3 +75,6 @@ MonoBehaviour:
   bend: 0.045
   twist: 1.2
   flutterSpeed: 4
+  burstSound: {fileID: 8300000, guid: 5fdd4e6bca7104bd99c248124803645e, type: 3}
+  burstVolume: 3
+  soundTimingOffset: -0.6
