@@ -3,11 +3,23 @@
 観客クライアントと管理者画面を実装する人向け。先に「考え方」と「やること」を書き、細かい仕様は後ろにまとめる。
 用語は `Livisor.Server/Docs/Rules/glossary.md` に合わせる。
 
+## 演出機能の対応範囲
+
+| 対象 | 現在の対応 |
+|---|---|
+| Server | Sharedの定義を起動時に検証し、`TransportState.DefaultActions`に含めて配信する |
+| DemoScene | Sharedを直接読み、紙吹雪の開始・停止、雷、銀テープを単独再生する |
+| Admin | `Effect`を文字列で入力し、予約1件を送れる。デフォルト演出を編集する画面はない |
+| LiveScene | `DefaultActions`と`Effect`の再生連携は作成途中。Adminから演出が再生されるまでの疎通は未検証 |
+
+演出の形式・定義の編集・全曲検証は[DemoSceneのデフォルト演出](demo-effects.md)を参照。
+以下の観客Clientの実装例は、既存の再生・停止・音量予約の経路を説明する。
+
 ## 1. まず押さえること
 
-1. サーバーは room ごとに「今の状態」を持っている。状態は 2 種類ある。**トランスポート**（再生中か、いつ始めたか、予約は何か）と、**状態同期**（音量や心拍数などの値）。
+1. サーバーは room ごとに「今の状態」を持っている。状態は 2 種類ある。**トランスポート**（再生中か、いつ始めたか、予約は何か）と、**状態同期**（音量や心拍数などの値）。トランスポートにはSharedのデフォルト演出も含める。
 2. 管理者が操作すると、サーバーは状態を更新し、同じ room の全員に「新しい状態」を配る。「PLAY が押された」という操作そのものは配らない。
-3. クライアントは、届いた状態をそのまま反映するだけでよい。前回の値を覚えて組み合わせる必要はない。
+3. 音量などの状態同期では、通知に含まれる項目だけを上書きする。通知にない項目は前の値を保つ。
 4. 予約（例: 再生開始の 10 秒後に音量を 30 にする）を実行するのはサーバーではなくクライアント。届いた状態から「あと何秒待つか」を計算してタイマーを張る。
 5. 通信の入口は `RoomClient` 1 つ。MagicOnion を直接触らない。
 
@@ -17,7 +29,7 @@
 |---|---|
 | room | 状態を共有する単位。管理者と観客が同じ roomId で参加する。いまは `"room1"` |
 | 参加 | Hub で room に入ること。入った時点の状態同期の全項目が返る |
-| トランスポート | 再生状態。「再生中か」「再生開始のサーバー時刻」「予約アクション」を 1 つにまとめた `TransportState` で届く |
+| トランスポート | 再生状態。「再生中か」「再生開始のサーバー時刻」「予約アクション」「デフォルト演出」をまとめた `TransportState` で届く |
 | 状態同期 | 音量や心拍数など、変わり続ける値の共有。変化した項目だけが `RoomStatePatch` で届く |
 | 予約アクション | 「再生開始から t 後に、これをする」の 1 件。room ごとに 1 件だけ。新しい登録で置き換わる |
 | 相対時間 | 再生開始を `00:00:00:00` とした経過時間。`HH:mm:ss:ff`（時:分:秒:センチ秒）。`00:01:30:00` は 90 秒後 |
@@ -54,7 +66,7 @@ sequenceDiagram
 
 ## 4. 観客クライアントを作る
 
-完成形は `Assets/Timeline/Scripts/TimelineReceiver.cs`。やることは 5 つ。
+実装は `Assets/Timeline/Scripts/TimelineReceiver.cs`。再生・停止・音量予約の処理を以下に示す。
 
 ### 4.1 接続する
 
@@ -111,7 +123,8 @@ void ApplyState(RoomStatePatch patch)
 
 ### 4.4 トランスポートを反映する
 
-`TransportState` は毎回 4 項目すべて入って届く。届くたびに、必ずこの順で 3 つ行う。
+`TransportState` は`DefaultActions`を含む5項目で届く。この節は`ScheduledAction`による予約の処理を示す。
+再生・停止・音量予約では、届くたびに次の順で3つ行う。
 
 1. 張ってある発火タイマーを取り消す。取り消さないと古い予約が二重に発火する。
 2. `Playing` で再生・停止を切り替える。
@@ -139,7 +152,7 @@ IEnumerator FireAfter(double delay, TimelineAction action)
 待ち時間は `TimelinePlayback.TryGetPendingAction` が次の式で出す。
 
 ```
-待ち時間 = 相対時間 − (ServerTimeMs − StartedAtServerMs)
+待ち時間（秒） = 相対時間（秒） − (ServerTimeMs − StartedAtServerMs) / 1000
 ```
 
 括弧の中は「サーバーが送った時点で、再生がどれだけ進んでいたか」。受け取った瞬間からこの時間だけ待つ。クライアントの時計は使わないので、時計のずれは影響しない。停止中はタイマーを張らない。待ち時間が負なら 0 として、すぐ実行する。
@@ -241,9 +254,23 @@ await _client.PublishStateAsync(new RoomStateEntry { Key = RoomStateKeys.Volume,
 
 Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。応答で表示を更新し、通知でも同じ更新をしてよい。通知は非メインスレッドで届くので、観客クライアントと同じくキューに積んで `Update` で反映する。
 
+### 5.4 演出を予約する入力形式
+
+`Action`に`Effect`を選ぶと、値の入力欄が文字列欄になる。演出名は[演出の形式](demo-effects.md#演出の形式)を参照。
+例えば、紙吹雪の停止要求は次の入力で表す。
+
+| Time | Action | Value |
+|---|---|---|
+| `00:00:10:00` | `Effect` | `confettiOff` |
+
+`SCHEDULE`が送るのは時刻順の先頭1件だけ。開始と停止の2行を入れても、2件がまとめて予約されるわけではない。
+`CANCEL`は予約を取り消す操作であり、実行済みの紙吹雪へ停止要求を送る操作ではない。
+この入力の送信先はサーバー。DemoSceneはAdminへ接続せず、Sharedの定義を使う。
+LiveSceneでの演出再生は作成途中のため、この入力例は送信形式を示すものとする。
+
 ## 6. データの形
 
-`TransportState`（毎回 4 項目すべて入る）
+`TransportState`（5項目）
 
 | 項目 | 型 | 意味 |
 |---|---|---|
@@ -251,14 +278,17 @@ Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。�
 | `StartedAtServerMs` | long | 再生開始のサーバー時刻（UTC ミリ秒）。停止中は 0 |
 | `ServerTimeMs` | long | この通知を作ったサーバー時刻（送信時刻） |
 | `ScheduledAction` | `TimelineAction?` | 予約アクション 1 件。無ければ null |
+| `DefaultActions` | `TimelineAction[]` | Sharedのデフォルト演出。予約とは別に保持する |
+
+`DefaultActions`はMessagePackの`Key(4)`。この項目を持たない旧形式では空配列になり、受信側はnullも空として扱う。
 
 `TimelineAction`
 
 | 項目 | 型 | 意味 |
 |---|---|---|
 | `Time` | string | 相対時間 `HH:mm:ss:ff` |
-| `Action` | `ActionType` | `Play` または `VolumeChange` |
-| `Value` | `ActionValue` | `Play` なら bool、`VolumeChange` なら int |
+| `Action` | `ActionType` | `Play`、`VolumeChange`、`Effect` |
+| `Value` | `ActionValue` | `Play`ならbool、`VolumeChange`ならint、`Effect`なら演出名のstring |
 
 `RoomStatePatch` は `Entries`（`RoomStateEntry[]`）と `ServerTimeMs`。`RoomStateEntry` は `Key`（string）と `Value`（`ActionValue`）。
 `ActionValue` は int / bool / string のどれか 1 つを持つ。`ActionValue.From(30)` のように作る。`Kind` で種類、`Number` / `Bool` / `Text` で値を読む。
@@ -279,7 +309,8 @@ Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。�
 |---|---|---|
 | roomId が空または空白 | `InvalidArgument` | 空でない roomId を渡す |
 | `Time` が `HH:mm:ss:ff` でない（`"00:00:10"`、`"00:00:60:00"` など） | `InvalidArgument` | 4 区切り、各欄 0–23 / 0–59 / 0–59 / 0–99 |
-| `Action` と `Value` の種類が合わない（`Play` に int など） | `InvalidArgument` | `Play` は bool、`VolumeChange` は int |
+| `Action` と `Value` の種類が合わない（`Play` に int など） | `InvalidArgument` | `Play`はbool、`VolumeChange`はint、`Effect`はstring |
+| `Effect`の値が空または空白 | `InvalidArgument` | `EffectNames`にある演出名を入れる。サーバーは名前の存在までは検証しない |
 | `volume` / `heartRate` に int 以外 | `InvalidArgument` | int を送る |
 | 状態同期のキーが空 | `InvalidArgument` | キーを入れる |
 | 参加する前に `PublishAsync` | `FailedPrecondition` | 先に `ConnectAsync`（参加）を終える |
@@ -300,7 +331,7 @@ Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。�
 |---|---|
 | サーバーのアドレス | `http://ホスト:5210`。HTTP/2 だけを受ける。`Assets/Network/ServerConfig.asset` で設定 |
 | 通信ライブラリ | MagicOnion 7.10.2（`Assets/Packages`）。シリアライズは MessagePack |
-| 通信契約 | `Livisor.Shared`。`Packages/manifest.json` から `file:../../Livisor.Shared` で参照 |
+| 通信契約 | `Livisor.Shared`。Unityは`Packages/com.livisor.shared.unity`の埋め込みパッケージを参照。正本の編集後に親リポジトリで`make shared/sync`を実行 |
 | チャネルの初期化 | `Assets/Scripts/MagicOnionInitializer.cs` がシーン読み込み前に行う。HTTP/2 専用の `YetAnotherHttpHandler` |
 | IL2CPP（Meta Quest） | `Assets/Scripts/MagicOnionClientInitializer.cs` の `[MagicOnionClientGeneration(typeof(ITimelineService), typeof(IRoomStateHub))]` が必要。無いと接続時に落ちる。エディタでは無くても動くので気づきにくい |
 
@@ -329,7 +360,7 @@ Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。�
 | 通知のイベントの中で UI やシーンを触る | 別スレッドからの操作で例外や不定動作 | キューに積んで `Update` で反映する（4.2） |
 | トランスポートが届いたときに古いタイマーを消さない | 予約が二重に発火する | 先に取り消してから張り直す（4.4） |
 | 予約の時刻に絶対時刻を入れる | 拒否されず、別の時刻で発火する | 再生開始からの相対時間で入れる |
-| `Play` の値に int、`VolumeChange` の値に bool を入れる | `InvalidArgument` で拒否 | `Play` は bool、`VolumeChange` は int |
+| `Action`と値の型を取り違える | `InvalidArgument`で拒否 | `Play`はbool、`VolumeChange`はint、`Effect`はstring |
 | 参加する前に音量を送る | `FailedPrecondition` で拒否 | `ConnectAsync` の完了を待つ |
 | 状態同期に `playing` を送る | 拒否はされないが、再生状態が二重になり食い違う | 再生状態はトランスポートだけを見る |
 | IL2CPP で `[MagicOnionClientGeneration]` に契約を書き忘れる | Quest 実機で接続時に落ちる。エディタでは動く | 使う契約をすべて列挙する |
@@ -342,7 +373,7 @@ Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。�
 - [ ] トランスポートが届くたびに、タイマー取消 → 再生切替 → タイマー張り直し、の順で処理している
 - [ ] 発火待ちは `WaitForSecondsRealtime` で待っている
 - [ ] 予約の `Time` は相対時間 `HH:mm:ss:ff` で送っている
-- [ ] `Play` は bool、`VolumeChange` は int を入れている
+- [ ] `Play`はbool、`VolumeChange`はint、`Effect`は空白でないstringを入れている
 - [ ] `VolumeChange` の発火後に `volume` を書き戻している
 - [ ] 知らない状態キーを無視している
 - [ ] `MagicOnionClientInitializer` に使う契約を列挙した

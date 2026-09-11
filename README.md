@@ -6,6 +6,9 @@ Livisor for Client
 
 通信なしのデモScene: `Assets/Scenes/DemoScene.unity`
 
+観客ClientとAdminの接続、予約の形式、現在の対応範囲は
+[サーバーとの通信](Docs/server-communication.md)を参照してください。
+
 ## DemoSceneでライブ演出を確認
 
 `DemoScene` はサーバー、Admin Scene、ラズパイへ接続せず、ライブの見た目と音楽を確認するためのSceneです。
