@@ -13,6 +13,9 @@ Play Modeを開始すると自動再生し、Gameビューで **S** を押すと
 音楽は本番と同じAnimation Eventによって演出開始の約2秒後に再生されます。
 DemoSceneは本番のBuild Settingsには含めません。
 
+紙吹雪・雷・銀テープはSharedの事前定義から自動再生します。
+演出の形式、編集手順、検証方法は[DemoSceneのデフォルト演出](Docs/demo-effects.md)を参照してください。
+
 再生中にGameビューで **C** を押すと、観客席とUnitychan目線を切り替えます。
 Unitychan目線では目の位置に追従して客席を見渡せます。
 Questでは **B / Y** で切り替え、**A / X**（Editorでは **R**）で視線の正面を合わせ直せます。

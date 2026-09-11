@@ -10,7 +10,7 @@ using UnityEngine;
 
 /// <summary>
 /// DemoScene でデフォルト演出（Issue #22）が音楽の再生位置どおりに発火することを確かめる。通信は使わない。
-/// 音は AudioListener をミュートして進める（再生位置は進む）。曲が終わるまで約 4 分かかる。
+/// 音は AudioListener をミュートして進める（再生位置は進む）。再射出の検証を含めて約 4 分半かかる。
 /// 演出の順序・時刻、実際の粒子と雷の再生、一時停止、銀テープの再射出を検証する。
 /// 結果は Logs/demo-effects-check.json。バッチ実行では終了コードにもなる。
 /// </summary>
@@ -86,7 +86,7 @@ public class SmokeTestDemoDefaultsDriver : MonoBehaviour
             else if (started) break;
 
             var confetti = GameObject.Find("Confetti(Clone)");
-            report.confettiRendered |= confetti != null && confetti.GetComponentsInChildren<ParticleSystem>()
+            report.confettiEmitted |= confetti != null && confetti.GetComponentsInChildren<ParticleSystem>()
                 .Any(p => p.particleCount > 0);
             if (_confettiStopped && confetti != null)
                 report.confettiCleared |= confetti.GetComponentsInChildren<ParticleSystem>().All(p => p.particleCount == 0);
@@ -102,10 +102,28 @@ public class SmokeTestDemoDefaultsDriver : MonoBehaviour
                 report.pauseChecked = true;
                 report.pauseWorks = source.timeSamples == sample && _effects.Count == count;
                 _director.ResumePerformance();
+
+                var paper = confetti != null ? confetti.GetComponentsInChildren<ParticleSystem>() : Array.Empty<ParticleSystem>();
+                _director.SetConfetti(false);
+                report.confettiRestarted = paper.Length > 0 && paper.All(p => !p.isEmitting);
+                _director.SetConfetti(true);
+                yield return new WaitForSecondsRealtime(0.5f);
+                report.confettiRestarted &= paper.All(p => p.isEmitting && p.particleCount > 0);
+                var times = paper.Select(p => p.time).ToArray();
+                _director.SetConfetti(true);
+                report.confettiOnIsIdempotent = times.Length > 0 && times.All(time => time > 0)
+                    && paper.Select((p, i) => p.time == times[i]).All(unchanged => unchanged);
             }
             yield return null;
         }
-        yield return new WaitForSecondsRealtime(6f); // EndPerformance（240 秒）を過ぎるまで待つ
+        report.silverBeforeFinale = silver != null ? silver.ParticleCount : 0;
+        var finaleDeadline = Time.realtimeSinceStartup + 6f;
+        while (_director != null && !_director.IsPerformancePaused && Time.realtimeSinceStartup < finaleDeadline)
+            yield return null;
+        yield return new WaitForSecondsRealtime(1f); // Prefab の soundTimingOffset は -0.6 秒。音の後の射出を待つ。
+        report.silverFinaleParticles = silver != null ? silver.ParticleCount : 0;
+        report.silverFinaleEmitted = _director != null && _director.IsPerformancePaused
+            && report.silverFinaleParticles > report.silverBeforeFinale;
 
         report.effects = _effects.ToArray();
         report.times = _times.ToArray();
@@ -117,14 +135,14 @@ public class SmokeTestDemoDefaultsDriver : MonoBehaviour
         report.confettiStopped = _confettiStopped;
         report.confettiDraining = _confettiDraining;
 
-        // 曲終了後にも、同じ銀テープを 2 回続けて出せることを粒子数で確認する。
+        // 既存の銀テープが自然に消えた後、曲終了後にも再射出できることを確認する。
         var dispatcher = new EffectDispatcher(_director);
         report.silverRepeated = silver != null;
         if (silver != null)
         {
             for (var i = 0; i < 2; i++)
             {
-                silver.GetComponentInChildren<ParticleSystem>().Clear();
+                yield return new WaitForSecondsRealtime(13f); // Prefab の最大寿命は 12 秒。
                 dispatcher.Fire(EffectNames.SilverStreamer);
                 yield return new WaitForSecondsRealtime(1f);
                 report.silverRepeated &= silver.ParticleCount > 0;
@@ -132,9 +150,11 @@ public class SmokeTestDemoDefaultsDriver : MonoBehaviour
         }
 
         report.errors = _errors.ToArray();
-        report.ok = started && report.offline && report.pauseWorks && report.confettiRendered
+        report.ok = started && report.offline && report.pauseWorks && report.confettiEmitted
             && report.confettiStopped && report.confettiDraining && report.confettiCleared
-            && report.lightningStarted && report.silverEmitted && report.silverRepeated && report.timingWorks
+            && report.confettiRestarted && report.confettiOnIsIdempotent
+            && report.lightningStarted && report.silverEmitted && report.silverFinaleEmitted
+            && report.silverRepeated && report.timingWorks
             && report.effects.SequenceEqual(expected) && report.errors.Length == 0;
         var result = JsonUtility.ToJson(report, true);
         var path = Path.Combine(Application.dataPath, "..", "Logs", "demo-effects-check.json");
@@ -153,8 +173,10 @@ public class SmokeTestDemoDefaultsDriver : MonoBehaviour
     [Serializable]
     private class Report
     {
-        public bool ok, offline, pauseChecked, pauseWorks, confettiRendered, lightningStarted;
+        public bool ok, offline, pauseChecked, pauseWorks, confettiEmitted, lightningStarted;
         public bool confettiStopped, confettiDraining, confettiCleared, silverEmitted, silverRepeated, timingWorks;
+        public bool confettiRestarted, confettiOnIsIdempotent, silverFinaleEmitted;
+        public int silverBeforeFinale, silverFinaleParticles;
         public double lastMusicTimeSeconds;
         public string[] effects, errors;
         public double[] times;

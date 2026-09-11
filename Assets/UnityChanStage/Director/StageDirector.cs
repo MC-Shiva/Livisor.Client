@@ -272,7 +272,10 @@ public class StageDirector : MonoBehaviour
         foreach (var particles in confetti.GetComponentsInChildren<ParticleSystem>(true))
         {
             if (enabled)
-                particles.Play(false);
+            {
+                if (!particles.isEmitting)
+                    particles.Play(false);
+            }
             else
                 particles.Stop(false, ParticleSystemStopBehavior.StopEmitting);
         }
