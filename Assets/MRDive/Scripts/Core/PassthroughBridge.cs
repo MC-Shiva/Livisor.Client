@@ -25,11 +25,11 @@ namespace Livisor.MRDive
         const string LayerTypeName = "OVRPassthroughLayer";
         const string ManagerTypeName = "OVRManager";
 
-        [Tooltip("フォールバック時に『現実が見えている』代わりに使う背景色。Editor 確認用。")]
-        [SerializeField] Color fallbackRealityColor = new Color(0.16f, 0.17f, 0.19f);
+        [Tooltip("フォールバック時に『現実が見えている』代わりに使う背景色。Editor 確認用。アルファは常に 0 に強制される。")]
+        [SerializeField] Color fallbackRealityColor = new Color(0.16f, 0.17f, 0.19f, 0f);
 
-        [Tooltip("パススルーが完全に消えたときの背景色。")]
-        [SerializeField] Color fallbackVoidColor = Color.black;
+        [Tooltip("パススルーが完全に消えたときの背景色。アルファは常に 0 に強制される。")]
+        [SerializeField] Color fallbackVoidColor = new Color(0f, 0f, 0f, 0f);
 
         // --- OVRPassthroughLayer ---
         Component _layer;
@@ -352,8 +352,16 @@ namespace Livisor.MRDive
         {
             if (_fallbackCamera == null) return;
 
+            Color color = Color.Lerp(fallbackVoidColor, fallbackRealityColor, v);
+
+            // アルファは必ず 0 にすること。Underlay のパススルーはアイバッファのアルファを
+            // そのままマスクに使うので、ここで 1 を書き込むと実機で現実が完全に隠れる。
+            // しかも書き戻す経路が無いまま固定されるうえ、Editor には合成相手がいないので
+            // まったく再現しない。RGB だけは残るので、Editor での進行確認には支障がない。
+            color.a = 0f;
+
             _fallbackCamera.clearFlags = CameraClearFlags.SolidColor;
-            _fallbackCamera.backgroundColor = Color.Lerp(fallbackVoidColor, fallbackRealityColor, v);
+            _fallbackCamera.backgroundColor = color;
         }
 
         // ------------------------------------------------------------------

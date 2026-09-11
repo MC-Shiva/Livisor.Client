@@ -212,13 +212,36 @@ namespace Livisor.MRDive
         /// <summary>距離 distance の位置で視野を覆うのに必要な一辺の長さ。</summary>
         public float ViewSizeAt(float distance)
         {
-            // HMD の実効 FOV は実行時まで確定しないので、取れなければ広めの 100 度を仮定する。
-            float fov = EyeCamera != null ? EyeCamera.fieldOfView : 100f;
-            if (fov <= 1f) fov = 100f;
+            // XR ではステレオ投影行列が実行時に差し替わるため、Camera.fieldOfView は
+            // プレハブのシリアライズ値（多くの場合 60 度）のままで実効 FOV と一致しない。
+            // それを信じると板が視野を覆いきらず、四隅に背景が残る。投影行列から直接取る。
+            float tanHalfV = 0f;
+            float tanHalfH = 0f;
 
-            float vertical = 2f * distance * Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad);
-            float aspect = EyeCamera != null && EyeCamera.aspect > 0.1f ? EyeCamera.aspect : 1f;
-            return Mathf.Max(vertical, vertical * aspect);
+            if (EyeCamera != null)
+            {
+                Matrix4x4 proj = EyeCamera.stereoEnabled
+                    ? EyeCamera.GetStereoProjectionMatrix(Camera.StereoscopicEye.Left)
+                    : EyeCamera.projectionMatrix;
+
+                // 透視投影では m00 = 1/tan(fovX/2)、m11 = 1/tan(fovY/2)。
+                float m00 = Mathf.Abs(proj.m00);
+                float m11 = Mathf.Abs(proj.m11);
+                if (m00 > 1e-4f && m11 > 1e-4f)
+                {
+                    tanHalfH = 1f / m00;
+                    tanHalfV = 1f / m11;
+                }
+            }
+
+            if (tanHalfV <= 0f || tanHalfH <= 0f)
+            {
+                // 取れなければ広め（片側 50 度＝水平 100 度相当）を仮定して、覆い損ねを避ける。
+                tanHalfH = Mathf.Tan(50f * Mathf.Deg2Rad);
+                tanHalfV = tanHalfH;
+            }
+
+            return 2f * distance * Mathf.Max(tanHalfV, tanHalfH);
         }
 
         public void Remove(OverlayLayer layer)
@@ -244,6 +267,10 @@ namespace Livisor.MRDive
         void OnDestroy()
         {
             Clear();
+
+            // _lockedRoot だけは head（カメラ）の子に付けているので、この GameObject を
+            // 消しても道連れにならない。明示的に片付ける。
+            if (_lockedRoot != null) Destroy(_lockedRoot.gameObject);
         }
 
         // ------------------------------------------------------------------

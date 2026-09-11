@@ -107,8 +107,9 @@ namespace Livisor.MRDive
         [Tooltip("Phase 4 でさらに潜る深さ[m]。大きいほど最後の加速が強い。")]
         [SerializeField] float plungeDepth = 9f;
 
-        [Tooltip("0 で完全な等速。上げるほど後半が速くなる。VR 酔い対策で上げすぎないこと。")]
-        [Range(0f, 1f)][SerializeField] float riseCurveBias = 0.65f;
+        [Tooltip("0 で等速。上げるほど後半が速くなる（0.3 なら終端速度は開始の約 1.9 倍、" +
+                 "0.65 なら約 4.7 倍）。全視野の垂直方向フローは VR 酔いの最大要因なので上げすぎないこと。")]
+        [Range(0f, 1f)][SerializeField] float riseCurveBias = 0.3f;
 
         [Tooltip("この深さ[m]まで沈むと『完全に水中』扱いになる。")]
         [SerializeField] float submergeDepth = 4f;

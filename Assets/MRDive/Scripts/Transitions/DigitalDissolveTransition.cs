@@ -113,7 +113,8 @@ namespace Livisor.MRDive
         [Tooltip("グリッチが断続する周波数[Hz]。光過敏性の基準（3Hz）を超えられないよう上限を 3 で止めてある。")]
         [SerializeField, Range(0.5f, 3f)] float glitchBurstRate = 2.6f;
 
-        [Tooltip("ずれるブロックの並びを組み替える頻度[Hz]。明滅するのは全体の 20% までのブロックに限られる。")]
+        [Tooltip("ずれるブロックの並びを組み替える頻度[Hz]。こちらは 3Hz を超えるが、" +
+                 "明滅する面積が視野の 20%（光過敏性の目安である 25% 未満）に抑えてあるため基準内。")]
         [SerializeField, Range(2f, 12f)] float blockRefreshRate = 8f;
 
         [Header("データストリーム")]
@@ -238,7 +239,12 @@ namespace Livisor.MRDive
 
         public override IEnumerator Run(DiveContext context)
         {
-            var passthrough = context != null ? context.Passthrough : null;
+            if (context == null) yield break;
+
+            // Director 以外から直接呼ばれても動くように、未準備ならここで作る（他 2 本と同じ）。
+            if (_dissolve == null && _stream == null) OnPrepare(context);
+
+            var passthrough = context.Passthrough;
 
             yield return Sweep(t =>
             {

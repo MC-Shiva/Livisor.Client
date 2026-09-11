@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 
 namespace Livisor.MRDive
 {
@@ -23,6 +24,7 @@ namespace Livisor.MRDive
         Color _color = Color.black;
         float _duration = 1f;
         float _holdBeforeFade = 0.15f;
+        Scene _originScene;
 
         /// <summary>着地フェードを仕込む。シーン遷移を始める直前に呼ぶこと。</summary>
         public static DiveArrivalFade Spawn(Color color, float duration, float holdBeforeFade = 0.15f)
@@ -34,18 +36,31 @@ namespace Livisor.MRDive
             fade._color = color;
             fade._duration = Mathf.Max(0f, duration);
             fade._holdBeforeFade = Mathf.Max(0f, holdBeforeFade);
+
+            // 出発側のシーンを覚えておく。遷移が完了する前に Camera.main を掴むと
+            // 出発側のカメラを拾ってしまうので、その判別に使う。
+            fade._originScene = SceneManager.GetActiveScene();
             return fade;
         }
 
         IEnumerator Start()
         {
-            // 遷移先のカメラが立ち上がるまで待つ。
+            // このコンポーネントは遷移を始める直前に生成されるので、最初の数フレームは
+            // まだ出発側のシーンが生きている。そこで Camera.main を掴むとベール球を
+            // 出発側のカメラにぶら下げてしまい、シーンごと破棄されてフェードが一度も出ない。
+            // 「出発側とは別のシーンに属するカメラ」が現れるまで待つ。
             Camera camera = null;
             float waited = 0f;
-            while (camera == null && waited < CameraWaitTimeout)
+
+            while (waited < CameraWaitTimeout)
             {
-                camera = Camera.main;
-                if (camera != null) break;
+                var candidate = Camera.main;
+                if (candidate != null && (!_originScene.IsValid() || candidate.gameObject.scene != _originScene))
+                {
+                    camera = candidate;
+                    break;
+                }
+
                 waited += Time.unscaledDeltaTime;
                 yield return null;
             }

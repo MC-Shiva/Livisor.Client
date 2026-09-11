@@ -198,9 +198,10 @@ namespace Livisor.MRDive
             bool runFailed = false;
             yield return RunGuarded(transition.Run(Context), transition.DisplayName, () => runFailed = true);
 
-            if (runFailed && !willLoad)
+            if (runFailed)
             {
-                // 演出が途中で死んで遷移もしないなら、現実が見えない箱に取り残される。必ず戻す。
+                // 演出が死んだまま遷移すると「演出ゼロで一瞬で着地」という、
+                // 例外に気づけない最悪の壊れ方になる。遷移可否にかかわらず必ず戻す。
                 yield return Restore(transition);
                 yield break;
             }
@@ -247,6 +248,7 @@ namespace Livisor.MRDive
                 {
                     Debug.LogError($"[MRDive] {label} の実行中に例外: {e}", this);
                     onError?.Invoke();
+                    DisposeAll(stack);
                     yield break;
                 }
 
@@ -266,6 +268,19 @@ namespace Livisor.MRDive
                 }
 
                 yield return current;
+            }
+        }
+
+        /// <summary>
+        /// 途中で抜けるとき、積んであるコルーチンの後始末を走らせる。
+        /// 実装側が Run に try/finally や using を書いていた場合、自前で回している以上
+        /// ここで Dispose しないとその finally が永久に実行されない。
+        /// </summary>
+        static void DisposeAll(Stack<IEnumerator> stack)
+        {
+            while (stack.Count > 0)
+            {
+                if (stack.Pop() is IDisposable disposable) disposable.Dispose();
             }
         }
 

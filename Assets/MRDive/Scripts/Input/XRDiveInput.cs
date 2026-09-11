@@ -208,8 +208,9 @@ namespace Livisor.MRDive
             // エディタでの動作確認用フォールバック。実機ビルドには入らない。
             // GetKey（押しっぱなし）で拾い、エッジ検出は上と同じ仕組みに任せる。
             if (UnityEngine.Input.GetKey(KeyCode.Space) || UnityEngine.Input.GetKey(KeyCode.Return)) _select = true;
-            if (UnityEngine.Input.GetKey(KeyCode.Alpha1)) { _primary = true; _select = true; }
-            if (UnityEngine.Input.GetKey(KeyCode.Alpha2)) { _secondary = true; }
+            // 数字キーはここでは拾わない。DiveDirector が「演出を番号で直接起動する」
+            // 用に使っており、両方が反応すると注視中のボタンも同時に発火して、
+            // どの演出が始まるかがコンポーネントの実行順まかせになってしまう。
 #endif
         }
     }
