@@ -7,20 +7,20 @@
 
 | 対象 | 現在の対応 |
 |---|---|
-| Server | Sharedの定義を起動時に検証し、`TransportState.DefaultActions`に含めて配信する |
+| Server | Adminの操作を受け、再生状態と予約1件を配信する |
 | DemoScene | Sharedを直接読み、紙吹雪の開始・停止、雷、銀テープを単独再生する |
 | Admin | `Effect`を文字列で入力し、予約1件を送れる。デフォルト演出を編集する画面はない |
-| LiveScene | `DefaultActions`と`Effect`の再生連携は作成途中。Adminから演出が再生されるまでの疎通は未検証 |
+| LiveScene | Adminの予約で紙吹雪の開始・停止、雷、銀テープを実行する。既存のシーン固定演出も動く |
 
 演出の形式・定義の編集・全曲検証は[DemoSceneのデフォルト演出](demo-effects.md)を参照。
-以下の観客Clientの実装例は、既存の再生・停止・音量予約の経路を説明する。
+LiveSceneは事前定義を読み込まない。Serverも事前定義を配信しない。
 
 ## 1. まず押さえること
 
-1. サーバーは room ごとに「今の状態」を持っている。状態は 2 種類ある。**トランスポート**（再生中か、いつ始めたか、予約は何か）と、**状態同期**（音量や心拍数などの値）。トランスポートにはSharedのデフォルト演出も含める。
+1. サーバーは room ごとに「今の状態」を持っている。状態は 2 種類ある。**トランスポート**（再生中か、いつ始めたか、予約は何か）と、**状態同期**（音量や心拍数などの値）。
 2. 管理者が操作すると、サーバーは状態を更新し、同じ room の全員に「新しい状態」を配る。「PLAY が押された」という操作そのものは配らない。
 3. 音量などの状態同期では、通知に含まれる項目だけを上書きする。通知にない項目は前の値を保つ。
-4. 予約（例: 再生開始の 10 秒後に音量を 30 にする）を実行するのはサーバーではなくクライアント。届いた状態から「あと何秒待つか」を計算してタイマーを張る。
+4. 予約を実行するのはクライアント。LiveSceneでは曲の再生位置が予約時刻に達するまで待つ。
 5. 通信の入口は `RoomClient` 1 つ。MagicOnion を直接触らない。
 
 ## 2. 言葉
@@ -29,7 +29,7 @@
 |---|---|
 | room | 状態を共有する単位。管理者と観客が同じ roomId で参加する。いまは `"room1"` |
 | 参加 | Hub で room に入ること。入った時点の状態同期の全項目が返る |
-| トランスポート | 再生状態。「再生中か」「再生開始のサーバー時刻」「予約アクション」「デフォルト演出」をまとめた `TransportState` で届く |
+| トランスポート | 「再生中か」「再生開始のサーバー時刻」「通知のサーバー時刻」「予約アクション」をまとめた `TransportState` |
 | 状態同期 | 音量や心拍数など、変わり続ける値の共有。変化した項目だけが `RoomStatePatch` で届く |
 | 予約アクション | 「再生開始から t 後に、これをする」の 1 件。room ごとに 1 件だけ。新しい登録で置き換わる |
 | 相対時間 | 再生開始を `00:00:00:00` とした経過時間。`HH:mm:ss:ff`（時:分:秒:センチ秒）。`00:01:30:00` は 90 秒後 |
@@ -123,50 +123,28 @@ void ApplyState(RoomStatePatch patch)
 
 ### 4.4 トランスポートを反映する
 
-`TransportState` は`DefaultActions`を含む5項目で届く。この節は`ScheduledAction`による予約の処理を示す。
-再生・停止・音量予約では、届くたびに次の順で3つ行う。
+`TransportState`は再生状態と予約1件を持つ。`TimelineReceiver.ApplyTransport`は次の順で処理する。
 
-1. 張ってある発火タイマーを取り消す。取り消さないと古い予約が二重に発火する。
-2. `Playing` で再生・停止を切り替える。
-3. 予約があり、かつ再生中なら、待ち時間を計算してタイマーを張り直す。
+1. 前の予約のタイマーを取り消す。
+2. `Playing`で再生・停止を切り替える。
+3. 再生中で未実行の予約があれば、指定位置まで待つ。
 
-```csharp
-Coroutine _timer;   // 常に 0 本か 1 本
+LiveSceneでは`StageDirector.MusicTimeSeconds`を使う。曲が始まる前と一時停止中は進まない。
+予約時刻は曲の先頭からの位置で、過ぎた位置なら1回すぐに実行する。
+STOPは曲を一時停止し、PLAYは続きから再開する。予約も再開後の曲の位置に従う。
+STOPしても予約は残り、次のPLAYで再び有効になる。実行済みの予約を残したまま再開すると再実行するため、不要な予約はCANCELする。
 
-void ApplyTransport(TransportState state)
-{
-    if (_timer != null) { StopCoroutine(_timer); _timer = null; }              // 1
-    _player.Play(state.Playing);                                              // 2
-    if (TimelinePlayback.TryGetPendingAction(state, out var delay, out var action))
-        _timer = StartCoroutine(FireAfter(delay, action));                    // 3
-}
+同じ時刻・Action・Valueを再通知しても、再生中に実行済みなら繰り返さない。
+予約IDは持たない。同じ内容を改めて実行する場合は、CANCELしてからSCHEDULEする。
 
-IEnumerator FireAfter(double delay, TimelineAction action)
-{
-    yield return new WaitForSecondsRealtime((float)delay);   // timeScale を 0 にしても止まらない
-    _timer = null;
-    Fire(action);
-}
-```
+`StageDirector`のないSandboxでは、従来の`TimelinePlayback.TryGetPendingAction`で待ち時間を求める。
 
-待ち時間は `TimelinePlayback.TryGetPendingAction` が次の式で出す。
-
-```
+```text
 待ち時間（秒） = 相対時間（秒） − (ServerTimeMs − StartedAtServerMs) / 1000
 ```
 
-括弧の中は「サーバーが送った時点で、再生がどれだけ進んでいたか」。受け取った瞬間からこの時間だけ待つ。クライアントの時計は使わないので、時計のずれは影響しない。停止中はタイマーを張らない。待ち時間が負なら 0 として、すぐ実行する。
-
-**計算例。** 予約 `00:00:10:00`（音量を 30 に）がある room で、管理者が操作したときに届く値と、受信側の動き。時刻は説明用。
-
-| 管理者の操作 | 届く `TransportState` | 受信側がすること |
-|---|---|---|
-| PLAY（サーバー時刻 1,000,000） | 再生中、開始 1,000,000、送信 1,000,000、予約 `00:00:10:00` | 再生。10 − 0 = **10 秒後**に発火 |
-| 再生中に予約を `00:00:15:00` に変更（1,004,000） | 再生中、開始 1,000,000、送信 1,004,000、予約 `00:00:15:00` | 前のタイマーを取消。15 − 4 = **11 秒後** |
-| STOP（1,006,000） | 停止、開始 0、送信 1,006,000、予約 `00:00:15:00` | 停止。タイマー取消。予約は残るが張らない |
-| PLAY（1,020,000） | 再生中、開始 1,020,000、送信 1,020,000、予約 `00:00:15:00` | 再生。新しい開始時刻から **15 秒後** |
-| 再生中に予約を `00:00:02:00` に変更（1,025,000） | 再生中、開始 1,020,000、送信 1,025,000、予約 `00:00:02:00` | 2 − 5 < 0 なので **すぐ**発火 |
-| CANCEL | 再生中、予約 null | タイマー取消。再生は続く |
+受信から`WaitForSecondsRealtime`で待つ。負なら0とする。停止中は待たず、PLAY後は新しいサーバー開始時刻を基準にする。
+LiveSceneとSandboxでは時刻の基準が異なるため、曲に合わせた演出はLiveSceneで確認する。
 
 ### 4.5 発火する
 
@@ -182,6 +160,9 @@ async void Fire(TimelineAction action)
             _player.ChangeVolume(action.Value);
             // 予約で変えた音量は状態同期に書き戻す。全員が同じ予約を持つので、全員が同じ値を送る
             await _client.PublishStateAsync(new RoomStateEntry { Key = RoomStateKeys.Volume, Value = action.Value });
+            break;
+        case ActionType.Effect:
+            if (action.Value.Kind == ActionValueKind.Text) _effects?.Fire(action.Value.Text);
             break;
     }
 }
@@ -266,11 +247,13 @@ Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。�
 `SCHEDULE`が送るのは時刻順の先頭1件だけ。開始と停止の2行を入れても、2件がまとめて予約されるわけではない。
 `CANCEL`は予約を取り消す操作であり、実行済みの紙吹雪へ停止要求を送る操作ではない。
 この入力の送信先はサーバー。DemoSceneはAdminへ接続せず、Sharedの定義を使う。
-LiveSceneでの演出再生は作成途中のため、この入力例は送信形式を示すものとする。
+LiveSceneで実行するには、AdminとClientを同じサーバー・roomに接続し、PLAY後にSCHEDULEする。
+停止中に予約した場合は、PLAYで再生を始めてから実行する。
+過ぎた時刻を予約すると1回すぐに実行する。今すぐ紙吹雪を止めたい場合は、時刻を`00:00:00:00`、値を`confettiOff`にする。
 
 ## 6. データの形
 
-`TransportState`（5項目）
+`TransportState`（4項目）
 
 | 項目 | 型 | 意味 |
 |---|---|---|
@@ -278,9 +261,8 @@ LiveSceneでの演出再生は作成途中のため、この入力例は送信�
 | `StartedAtServerMs` | long | 再生開始のサーバー時刻（UTC ミリ秒）。停止中は 0 |
 | `ServerTimeMs` | long | この通知を作ったサーバー時刻（送信時刻） |
 | `ScheduledAction` | `TimelineAction?` | 予約アクション 1 件。無ければ null |
-| `DefaultActions` | `TimelineAction[]` | Sharedのデフォルト演出。予約とは別に保持する |
 
-`DefaultActions`はMessagePackの`Key(4)`。この項目を持たない旧形式では空配列になり、受信側はnullも空として扱う。
+MessagePackのキーは0〜3。`TimelineAction`の形式はDemoSceneの事前定義とAdminの予約で共通。
 
 `TimelineAction`
 
@@ -319,9 +301,10 @@ LiveSceneでの演出再生は作成途中のため、この入力例は送信�
 ## 8. 決まりごと
 
 - 予約アクションは room ごとに 1 件。新しい登録が前の 1 件を置き換える。停止しても残る。消すのは CANCEL だけ。
+- 再生中に同じ時刻・Action・Valueを再通知しても、実行済みなら繰り返さない。同じ内容を再実行するときはCANCELしてからSCHEDULEする。
 - 予約の時刻は相対時間。絶対時刻を入れても形式が同じなので拒否されず、別の時刻で発火する。
 - 音量などの値の範囲（0〜100 など）はサーバーで検証しない。画面側で制限する。
-- 通信の片道の遅れはそのまま発火の遅れになる。補正はしない。
+- LiveSceneは各Clientの曲の位置を使う。通信遅延によるClient間の再生開始のずれは補正しない。
 - サーバーの room はメモリ上にある。サーバーを再起動すると room は空になり、Hub の接続も切れる。
 - 自動再接続は無い。切断を知るには Hub の `WaitForDisconnectAsync()` を待つ（`RoomClient` はまだ公開していないので、必要なら足す）。再接続は `DisposeAsync` してから `ConnectAsync` をやり直す。
 
@@ -344,6 +327,12 @@ LiveSceneでの演出再生は作成途中のため、この入力例は送信�
 | `Livisor/Smoke Test` | `Assets/Scenes/Sandbox.unity` の `TimelineReceiver` が再生・予約・音量を受けて反映する |
 | `Livisor/Smoke Test (Admin)` | 管理者画面のボタンが送信し、応答で表示が変わる |
 | `Livisor/Smoke Test (Admin, all features)` | 管理者画面の全機能と、別接続の観客クライアントへの配信 |
+| `Livisor/Smoke Test (LiveScene scheduled effects)` | Admin → Server → LiveSceneで紙吹雪の開始・停止、雷、銀テープ、予約の重複・取消・一時停止、音量を確認 |
+
+LiveSceneのテストは`http://127.0.0.1:5210`のローカルサーバーを使い、約1分半で終了する。
+接続先とroomをテスト中だけ変更し、デバイス通信を止める。シーンや設定アセットは保存しない。
+結果は`Logs/live-effects-check.json`の`ok`・`checks`・`errors`で確認する。
+テスト後はシーンを開き直し、一時設定を破棄する。
 
 手で確かめるときは、Sandbox を再生してから Admin の画面で操作し、Console に次のログが出ることを見る。
 
@@ -364,14 +353,14 @@ LiveSceneでの演出再生は作成途中のため、この入力例は送信�
 | 参加する前に音量を送る | `FailedPrecondition` で拒否 | `ConnectAsync` の完了を待つ |
 | 状態同期に `playing` を送る | 拒否はされないが、再生状態が二重になり食い違う | 再生状態はトランスポートだけを見る |
 | IL2CPP で `[MagicOnionClientGeneration]` に契約を書き忘れる | Quest 実機で接続時に落ちる。エディタでは動く | 使う契約をすべて列挙する |
-| `WaitForSeconds` で発火を待つ | 停止中に `timeScale` を 0 にすると止まる | `WaitForSecondsRealtime` を使う |
+| シーン開始からの経過時間で曲の演出を待つ | 曲の開始待ちや一時停止で演出がずれる | LiveSceneは`MusicTimeSeconds`を使う |
 
 ## 12. チェックリスト
 
 - [ ] `ConnectAsync` の直後に `StateChanged` と `TransportChanged` が 1 回ずつ来ることを前提に初期表示を作った
 - [ ] 通知はキューに積み、`Update` で反映している
 - [ ] トランスポートが届くたびに、タイマー取消 → 再生切替 → タイマー張り直し、の順で処理している
-- [ ] 発火待ちは `WaitForSecondsRealtime` で待っている
+- [ ] LiveSceneの演出は曲の位置で待ち、Sandboxのタイマーは`WaitForSecondsRealtime`を使う
 - [ ] 予約の `Time` は相対時間 `HH:mm:ss:ff` で送っている
 - [ ] `Play`はbool、`VolumeChange`はint、`Effect`は空白でないstringを入れている
 - [ ] `VolumeChange` の発火後に `volume` を書き戻している

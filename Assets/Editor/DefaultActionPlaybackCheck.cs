@@ -50,7 +50,7 @@ public static class DefaultActionPlaybackCheck
 
         playback.Load(new[] { Effect("00:00:05:00", "a"), Effect("00:00:10:00", "b") });
         playback.Advance(8.0, Fire);
-        Check(fired.Count == 1, "同じ定義を再受信しても発火済みをやり直さない");
+        Check(fired.Count == 1, "同じ定義を読み直しても発火済みをやり直さない");
         playback.Advance(30.0, Fire);
         Check(string.Join(",", fired) == "a,b", "まとめて到達した分は順に発火する");
         playback.Advance(30.0, Fire);
@@ -60,7 +60,7 @@ public static class DefaultActionPlaybackCheck
         Check(string.Join(",", fired) == "a,b", "再生位置が戻っても発火し直さない（戻す操作は現状無い）");
 
         playback.Load(null);
-        Check(playback.Count == 0, "null は空として扱う（DefaultActions を知らない旧サーバー）");
+        Check(playback.Count == 0, "null の定義は空として扱う");
 
         var defaults = new DefaultActionPlayback();
         var defined = DefaultActionSet.Create();

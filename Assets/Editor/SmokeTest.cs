@@ -11,6 +11,33 @@ using UnityEngine;
 /// </summary>
 public static class SmokeTest
 {
+    /// <summary>Admin → localhost:5210 → LiveScene の演出予約を検証する。シーンと接続設定の変更は保存しない。</summary>
+    [MenuItem("Livisor/Smoke Test (LiveScene scheduled effects)")]
+    public static void RunLiveEffects()
+    {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        EditorSceneManager.OpenScene("Assets/Scenes/LiveScene.unity");
+        Object.FindFirstObjectByType<StageDirector>().useDirectorCameraInEditor = true;
+        foreach (var device in Object.FindObjectsByType<Livisor.Device.DeviceCommandExample>(FindObjectsSortMode.None))
+            device.enabled = false;
+        var config = ScriptableObject.CreateInstance<ServerConfig>();
+        var configObject = new SerializedObject(config);
+        configObject.FindProperty("_serverAddress").stringValue = "http://127.0.0.1:5210";
+        configObject.ApplyModifiedPropertiesWithoutUndo();
+        var receiver = new SerializedObject(Object.FindFirstObjectByType<TimelineReceiver>());
+        receiver.FindProperty("_serverConfig").objectReferenceValue = config;
+        receiver.FindProperty("_roomId").stringValue = "smoke-live-effects";
+        receiver.FindProperty("_device").objectReferenceValue = null;
+        receiver.ApplyModifiedPropertiesWithoutUndo();
+        EditorSceneManager.OpenScene("Assets/Admin/Scenes/Admin.unity", OpenSceneMode.Additive);
+        var admin = new SerializedObject(Object.FindFirstObjectByType<AdminConsoleView>());
+        admin.FindProperty("_serverConfig").objectReferenceValue = config;
+        admin.FindProperty("_roomId").stringValue = "smoke-live-effects";
+        admin.ApplyModifiedPropertiesWithoutUndo();
+        new GameObject("SmokeTestLiveEffectsDriver").AddComponent<SmokeTestLiveEffectsDriver>();
+        EditorApplication.EnterPlaymode();
+    }
+
     [MenuItem("Livisor/Smoke Test (Live and Device, 5 minutes)")]
     public static void RunLiveDevice()
     {

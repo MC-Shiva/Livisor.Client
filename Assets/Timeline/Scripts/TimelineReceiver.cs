@@ -16,6 +16,8 @@ using UnityEngine;
 /// サーバーから届くものは 2 種類ある。
 ///   - トランスポート（再生中かどうか・予約 1 件）: <see cref="IRoomClient.TransportChanged"/>
 ///   - 状態の差分（音量など）: <see cref="IRoomClient.StateChanged"/>
+///
+/// 事前定義は DemoScene 専用。Live の受信側は Admin からの予約を扱う。
 /// </summary>
 public class TimelineReceiver : MonoBehaviour
 {
@@ -29,16 +31,22 @@ public class TimelineReceiver : MonoBehaviour
     private IRoomClient _client;
     private IMediaPlayer _player;
 
+    private EffectDispatcher _effects;
+
     // 受信は非メインスレッドで起きるため、メインスレッド（Update）で処理するためのキュー。
     private readonly ConcurrentQueue<TransportState> _pendingTransports = new();
     private readonly ConcurrentQueue<RoomStatePatch> _pendingStates = new();
 
     // 予約の発火待ち。トランスポートが変わるたびに張り直す（古い予約が二重に発火しないように）。
     private Coroutine _pendingAction;
+    private TimelineAction _scheduledAction;
+    private bool _scheduledFired;
 
     async void Start()
     {
         _player = CreateMediaPlayer();
+        if (_stageDirector != null)
+            _effects = new EffectDispatcher(_stageDirector);
 
         _client = new RoomClient();
         _client.TransportChanged += OnTransportChanged;
@@ -100,6 +108,14 @@ public class TimelineReceiver : MonoBehaviour
     {
         Debug.Log($"[Receiver] transport: playing={state.Playing} scheduled={(state.ScheduledAction == null ? "none" : state.ScheduledAction.Time)}");
 
+        // 予約IDは持たず、時刻・種類・値が同じ再通知は実行済みとして扱う。取消で再登録できる。
+        var action = state.ScheduledAction;
+        if (action == null || _scheduledAction == null || action.Time != _scheduledAction.Time
+            || action.Action != _scheduledAction.Action || !action.Value.Equals(_scheduledAction.Value)
+            || !state.Playing)
+            _scheduledFired = false;
+        _scheduledAction = action;
+
         // 停止中は基準時刻が無いので予約タイマーを取り消す。次に再生になったら張り直す（TransportState のコメント参照）。
         if (_pendingAction != null)
         {
@@ -110,8 +126,25 @@ public class TimelineReceiver : MonoBehaviour
         _player.Play(state.Playing);
         if (_device != null) _device.ApplyPlaying(state.Playing);
 
-        if (TimelinePlayback.TryGetPendingAction(state, out var delaySeconds, out var action))
+        if (!state.Playing || action == null || _scheduledFired)
+            return;
+
+        if (_stageDirector != null)
+            _pendingAction = StartCoroutine(FireAtMusicTime(action));
+        else if (TimelinePlayback.TryGetPendingAction(state, out var delaySeconds, out _))
             _pendingAction = StartCoroutine(FireAfter(delaySeconds, action));
+    }
+
+    // Live は曲の位置で待つ。開始待ち・一時停止中は MusicTimeSeconds が -1 になる。
+    private IEnumerator FireAtMusicTime(TimelineAction action)
+    {
+        if (!PlaybackTime.TryParse(action.Time, out var time))
+            yield break;
+        while (_stageDirector.MusicTimeSeconds < time.TotalSeconds)
+            yield return null;
+        _pendingAction = null;
+        _scheduledFired = true;
+        Dispatch(action);
     }
 
     private IEnumerator FireAfter(double delaySeconds, TimelineAction action)
@@ -119,9 +152,11 @@ public class TimelineReceiver : MonoBehaviour
         // Time.timeScale に影響されないよう実時間で待つ（停止中に timeScale を 0 にする実装があるため）。
         yield return new WaitForSecondsRealtime((float)delaySeconds);
         _pendingAction = null;
+        _scheduledFired = true;
         Dispatch(action);
     }
 
+    // 予約アクションを実行する。
     private async void Dispatch(TimelineAction action)
     {
         switch (action.Action)
@@ -152,6 +187,21 @@ public class TimelineReceiver : MonoBehaviour
                 {
                     Debug.LogException(e);
                 }
+                break;
+
+            case ActionType.Effect:
+                // 演出名は文字列。StageDirector が無いシーンでは実行先が無いのでログだけ出す。
+                if (action.Value.Kind != ActionValueKind.Text)
+                {
+                    Debug.LogWarning($"[Receiver] effect の値が文字列ではないため無視する (Kind={action.Value.Kind})");
+                    break;
+                }
+                if (_effects == null)
+                {
+                    Debug.Log($"[Effect] {action.Value.Text} (StageDirector が無いため実行しない)");
+                    break;
+                }
+                _effects.Fire(action.Value.Text);
                 break;
         }
     }

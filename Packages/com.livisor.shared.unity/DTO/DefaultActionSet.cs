@@ -3,10 +3,10 @@ using Livisor.Shared.Common;
 namespace Livisor.Shared.DTO
 {
     /// <summary>
-    /// Live / Demo 共通のデフォルト演出。サーバーは起動時に検証し、配信に含める。DemoScene は直接読む。
+    /// DemoScene 専用の事前定義。Client が直接読み、曲の再生位置に合わせて実行する。
     /// Create の各行は At(曲の先頭からの時刻, 操作, 値)。時刻は "HH:mm:ss:ff"（末尾はセンチ秒）。
     /// 音量なら At("00:00:30:00", ActionType.VolumeChange, 50)、停止なら ActionType.Play, false と書く。
-    /// 変更後はリポジトリ直下で make shared/sync を実行してから、Server / Client を再ビルドする。
+    /// 変更後はリポジトリ直下で make shared/sync を実行してから、Client を再ビルドする。
     /// 時刻は仮値。クライアントは時刻順に実行し、一時停止中は進めない。
     /// Demo の時刻は音源の終了前に置く。
     /// 銀テープは寿命 12 秒と射出待ち 0.6 秒があるため、終了時の射出要求まで 13 秒以上空ける。

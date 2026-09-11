@@ -55,7 +55,7 @@ public class StageDirector : MonoBehaviour
 
     /// <summary>
     /// 音楽の再生位置（秒）。まだ鳴っていない・一時停止中は -1。
-    /// デフォルト演出（Issue #22）の発火基準。AudioSource.time は圧縮音源で粗いため timeSamples から求める。
+    /// 演出の発火基準。AudioSource.time は圧縮音源で粗いため timeSamples から求める。
     /// </summary>
     public double MusicTimeSeconds
     {
@@ -78,15 +78,20 @@ public class StageDirector : MonoBehaviour
 
         SetupCameraRig();
 
-        if (confettiPrefab != null)
+        objectsNeedsActivation = new GameObject[prefabsNeedsActivation.Length];
+        for (var i = 0; i < prefabsNeedsActivation.Length; i++)
+        {
+            objectsNeedsActivation[i] = (GameObject)Instantiate(prefabsNeedsActivation[i]);
+            if (prefabsNeedsActivation[i] == confettiPrefab)
+                confetti = objectsNeedsActivation[i];
+        }
+
+        // Live の既存の紙吹雪を使う。Demo のように固定演出に含まれない場合だけ生成する。
+        if (confetti == null && confettiPrefab != null)
         {
             confetti = Instantiate(confettiPrefab);
             confetti.SetActive(false);
         }
-
-        objectsNeedsActivation = new GameObject[prefabsNeedsActivation.Length];
-        for (var i = 0; i < prefabsNeedsActivation.Length; i++)
-            objectsNeedsActivation[i] = (GameObject)Instantiate(prefabsNeedsActivation[i]);
 
         objectsOnTimeline = new GameObject[prefabsOnTimeline.Length];
         for (var i = 0; i < prefabsOnTimeline.Length; i++)

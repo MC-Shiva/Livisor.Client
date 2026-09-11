@@ -93,5 +93,5 @@ ConsoleのError・Exception・Warningは、シーン読み込み時から終了�
 **Tキー**で銀テープ、**Lキー**で雷を追加再生できます。**Eキー**は演出を終了します。
 自動検証中は、操作キー（S・P・T・L・E）を押さないでください。
 
-この検証の対象はDemoSceneの単独実行です。サーバー配信やAdminからの予約との結合、Quest実機での表示は別に検証します。
+この検証の対象はDemoSceneの単独実行です。LiveSceneへの予約は[通信ガイドの疎通テスト](server-communication.md#10-動作確認)で確認します。Quest実機での表示は別に検証します。
 Adminの`Effect`入力欄は演出名を指定できる文字列欄になっています。Adminからの疎通は、このDemo検証には含みません。
