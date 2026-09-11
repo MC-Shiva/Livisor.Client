@@ -9,6 +9,7 @@ namespace Livisor.Shared.DTO
     /// 例: { "time": "00:00:30:00", "action": { "play": true } }
     /// 例: { "time": "00:01:00:00", "action": { "play": false } }
     /// 例: { "time": "00:02:15:50", "action": { "volumeChange": 10 } }
+    /// 例: { "time": "00:01:00:00", "action": { "effect": "lightning" } }
     /// </summary>
     [MessagePackObject]
     public class TimelineAction
@@ -23,11 +24,11 @@ namespace Livisor.Shared.DTO
         [Key(0)]
         public string Time { get; set; } = string.Empty;
 
-        /// <summary>操作の種類（play / volumeChange）。</summary>
+        /// <summary>操作の種類（play / volumeChange / effect）。</summary>
         [Key(1)]
         public ActionType Action { get; set; }
 
-        /// <summary>操作に付随する値。play=true（再生）/ play=false（停止）/ volumeChange=10 など。</summary>
+        /// <summary>操作に付随する値。play は bool、volumeChange は int、effect は演出名の文字列。</summary>
         [Key(2)]
         [MessagePackFormatter(typeof(ActionValueFormatter))]
         public ActionValue Value { get; set; }

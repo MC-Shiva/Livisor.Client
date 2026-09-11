@@ -50,8 +50,20 @@ namespace Livisor.Shared.DTO
         /// <summary>
         /// 予約中のアクション。最大 1 件で、無ければ null。
         /// <c>Time</c> は絶対時刻ではなく、再生開始からの相対時間を表す。
+        /// クライアントは DefaultActions の間へ時刻順に差し込み、同時刻なら予約を後に実行する。
+        /// 過去の時刻の予約は受信後に 1 回実行し、再配信だけでは実行し直さない。
+        /// 取り消しはこの項目だけを null にし、DefaultActions は変えない。
         /// </summary>
         [Key(3)]
         public TimelineAction? ScheduledAction { get; set; }
+
+        /// <summary>
+        /// Live / Demo 共通のデフォルト演出。サーバーは起動時に DefaultActionSet を検証し、配信ごとに新しい DTO を作る。
+        /// Time は曲の先頭からの位置。クライアントは音源の再生位置で発火し、一時停止中は進めない。
+        /// 再配信では実行済みのデフォルト演出を繰り返さない。予約との区別を保つため、別の配列として送る。
+        /// この項目が無い旧形式では初期値の空配列になる。受信側は null も空として扱う。
+        /// </summary>
+        [Key(4)]
+        public TimelineAction[] DefaultActions { get; set; } = new TimelineAction[0];
     }
 }
