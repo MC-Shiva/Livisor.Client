@@ -19,6 +19,7 @@ public class StageDirector : MonoBehaviour
     public GameObject musicPlayerPrefab;
     public GameObject mainCameraRigPrefab;
     public GameObject playerPenlightPrefab;
+    public GameObject confettiPrefab;
     public GameObject[] prefabsNeedsActivation;
     public GameObject[] prefabsOnTimeline;
     public GameObject[] miscPrefabs;
@@ -43,6 +44,7 @@ public class StageDirector : MonoBehaviour
     ScreenOverlay[] screenOverlays;
     GameObject[] objectsNeedsActivation;
     GameObject[] objectsOnTimeline;
+    GameObject confetti;
 
     // 一時停止前の再生速度。再開時に元へ戻す。
     float resumeTimeScale = 1.0f;
@@ -50,6 +52,21 @@ public class StageDirector : MonoBehaviour
 
     public bool IsPerformancePaused => isPerformancePaused;
     public MusicPlayerController MusicPlayerController => musicPlayerController;
+
+    /// <summary>
+    /// 音楽の再生位置（秒）。まだ鳴っていない・一時停止中は -1。
+    /// デフォルト演出（Issue #22）の発火基準。AudioSource.time は圧縮音源で粗いため timeSamples から求める。
+    /// </summary>
+    public double MusicTimeSeconds
+    {
+        get
+        {
+            var source = musicPlayerController != null ? musicPlayerController.MainSource : null;
+            if (source == null || source.clip == null || !source.isPlaying)
+                return -1;
+            return source.timeSamples / (double)source.clip.frequency;
+        }
+    }
 
     void Awake()
     {
@@ -60,6 +77,12 @@ public class StageDirector : MonoBehaviour
             Debug.LogError("MusicPlayer prefab requires MusicPlayerController.", musicPlayer);
 
         SetupCameraRig();
+
+        if (confettiPrefab != null)
+        {
+            confetti = Instantiate(confettiPrefab);
+            confetti.SetActive(false);
+        }
 
         objectsNeedsActivation = new GameObject[prefabsNeedsActivation.Length];
         for (var i = 0; i < prefabsNeedsActivation.Length; i++)
@@ -232,6 +255,27 @@ public class StageDirector : MonoBehaviour
     public void ActivateProps()
     {
         foreach (var o in objectsNeedsActivation) o.BroadcastMessage("ActivateProps");
+    }
+
+    /// <summary>紙吹雪の放出を開始・停止する。停止後も表示中の紙片は自然に消える。</summary>
+    public void SetConfetti(bool enabled)
+    {
+        if (confetti == null)
+            return;
+
+        if (enabled)
+        {
+            confetti.SetActive(true);
+            confetti.BroadcastMessage("ActivateProps");
+        }
+
+        foreach (var particles in confetti.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            if (enabled)
+                particles.Play(false);
+            else
+                particles.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+        }
     }
 
     public void SwitchCamera(int index)

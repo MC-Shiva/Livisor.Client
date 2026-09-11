@@ -1,8 +1,12 @@
+using Livisor.Shared.Common;
+using Livisor.Shared.DTO;
 using UnityEngine;
 
 /// <summary>
 /// 通信を使わないDemoScene専用のライブ操作。
 /// StageDirectorの通常の再生経路を使い、音楽と演出のタイミングを維持する。
+/// デフォルト演出（Issue #22）はサーバーを介さず、Shared の <see cref="DefaultActionSet"/> を直接読んで
+/// 音楽の再生位置で発火する。
 /// </summary>
 [DefaultExecutionOrder(100)]
 [DisallowMultipleComponent]
@@ -13,6 +17,9 @@ public sealed class DemoSceneController : MonoBehaviour
 
     [SerializeField, Tooltip("Play Mode開始時にライブを自動再生する。")]
     bool _playOnStart = true;
+
+    readonly DefaultActionPlayback _defaults = new();
+    EffectDispatcher _effects;
 
     void Awake()
     {
@@ -28,6 +35,10 @@ public sealed class DemoSceneController : MonoBehaviour
             enabled = false;
             return;
         }
+
+        _effects = new EffectDispatcher(_stageDirector);
+        _defaults.Load(DefaultActionSet.Create());
+        Debug.Log($"[DemoScene] default actions loaded: {_defaults.Count}", this);
 
         if (_playOnStart)
             ResumePerformance();
@@ -45,6 +56,8 @@ public sealed class DemoSceneController : MonoBehaviour
             _stageDirector.EndPerformance();
         if (Input.GetKeyDown(KeyCode.P))
             PausePerformance();
+
+        _defaults.Advance(_stageDirector.MusicTimeSeconds, Fire);
     }
 
     public void ResumePerformance()
@@ -57,5 +70,27 @@ public sealed class DemoSceneController : MonoBehaviour
     {
         _stageDirector.PausePerformance();
         Debug.Log("[DemoScene] Pause", this);
+    }
+
+    // Shared の定義を実行する。
+    void Fire(TimelineAction action)
+    {
+        switch (action.Action)
+        {
+            case ActionType.Effect:
+                if (action.Value.Kind == ActionValueKind.Text)
+                    _effects.Fire(action.Value.Text);
+                break;
+            case ActionType.Play:
+                if (action.Value.Kind == ActionValueKind.Bool)
+                {
+                    if (action.Value.Bool) ResumePerformance(); else PausePerformance();
+                }
+                break;
+            case ActionType.VolumeChange:
+                if (action.Value.Kind == ActionValueKind.Number)
+                    _stageDirector.SetMainVolume(action.Value.Number);
+                break;
+        }
     }
 }

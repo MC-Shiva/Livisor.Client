@@ -16,9 +16,11 @@ namespace Livisor.Shared.DTO
         /// </summary>
         public static TimelineAction[] Create() => new[]
         {
+            At("00:00:00:50", ActionType.Effect, EffectNames.ConfettiOn),
             At("00:01:00:00", ActionType.Effect, EffectNames.Lightning),
             At("00:02:10:00", ActionType.Effect, EffectNames.Lightning),
             At("00:03:10:00", ActionType.Effect, EffectNames.Lightning),
+            At("00:03:30:00", ActionType.Effect, EffectNames.ConfettiOff),
             At("00:03:52:00", ActionType.Effect, EffectNames.SilverStreamer),
         };
 
