@@ -1,0 +1,15 @@
+<!--
+  MRDive は Meta XR SDK をリフレクション経由でしか呼ばない（PassthroughBridge 参照）。
+
+  IL2CPP のマネージドコード除去は「どこからも静的に参照されていない」と判断して
+  これらのメンバを消すことがある。消されると FindMethod が null を返し、コードは
+  静かにスキップするため、Editor では色調整や輪郭線が効くのに実機でだけ黙って
+  効かなくなる、という極めて追いにくい差分になる。それを防ぐための保護。
+-->
+<linker>
+  <assembly fullname="Oculus.VR">
+    <type fullname="OVRPassthroughLayer" preserve="all" />
+    <type fullname="OVRManager" preserve="all" />
+    <type fullname="OVRCameraRig" preserve="all" />
+  </assembly>
+</linker>
