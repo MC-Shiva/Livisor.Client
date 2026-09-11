@@ -1,3 +1,5 @@
+#nullable enable
+
 using MessagePack;
 
 namespace Livisor.Shared.DTO
