@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Text;
 using UnityEditor;
@@ -49,6 +50,7 @@ namespace Livisor.MRDive.EditorTools
 
             CheckBuildTarget(report);
             CheckProjectConfig(report, apply);
+            CheckAndroidManifest(report, apply);
             CheckArchitecture(report, apply);
             CheckSplash(report, apply);
             CheckOpenXrFeature(report);
@@ -144,6 +146,85 @@ namespace Livisor.MRDive.EditorTools
             {
                 report.Error($"Project Config の保存に失敗: {e.Message}");
             }
+        }
+
+        /// <summary>
+        /// AndroidManifest に com.oculus.feature.PASSTHROUGH が入っているか。
+        ///
+        /// OVRProjectConfig 側を Supported にしても、それだけでは足りない。
+        /// Assets/Plugins/Android/AndroidManifest.xml が無いと、ビルド時の自動パッチでは
+        /// PASSTHROUGH が入らないことを実測で確認している（Gradle 出力を検査したところ
+        /// supportedDevices や focusaware は入るのに PASSTHROUGH だけ入らなかった）。
+        /// Meta 公式の生成ツールを叩いて、この manifest をプロジェクトに用意する。
+        /// </summary>
+        static void CheckAndroidManifest(Report report, bool apply)
+        {
+            const string manifestPath = "Assets/Plugins/Android/AndroidManifest.xml";
+            const string marker = "com.oculus.feature.PASSTHROUGH";
+
+            if (ManifestHasPassthrough(manifestPath, marker))
+            {
+                report.Ok($"AndroidManifest に {marker} がある");
+                return;
+            }
+
+            bool exists = File.Exists(manifestPath);
+            if (!apply)
+            {
+                report.Error(
+                    (exists
+                        ? $"{manifestPath} に {marker} がありません。"
+                        : $"{manifestPath} がありません。") +
+                    "これが無いとビルド時の自動パッチだけでは PASSTHROUGH が入らず、実機で現実が映りません");
+                return;
+            }
+
+            Type preprocessor = FindType("OVRManifestPreprocessor");
+            MethodInfo generate = null;
+            if (preprocessor != null)
+            {
+                var methods = preprocessor.GetMethods(BindingFlags.Public | BindingFlags.Static);
+                for (int i = 0; i < methods.Length; i++)
+                {
+                    if (methods[i].Name != "GenerateOrUpdateAndroidManifest") continue;
+                    var parameters = methods[i].GetParameters();
+                    if (parameters.Length != 1 || parameters[0].ParameterType != typeof(bool)) continue;
+                    generate = methods[i];
+                    break;
+                }
+            }
+
+            if (generate == null)
+            {
+                report.Error(
+                    "OVRManifestPreprocessor.GenerateOrUpdateAndroidManifest が見つかりません。" +
+                    "Meta > Tools > Android Manifest Tool から手動で生成してください");
+                return;
+            }
+
+            try
+            {
+                // silentMode = true。ダイアログを出さずに生成する。
+                generate.Invoke(null, new object[] { true });
+                AssetDatabase.Refresh();
+            }
+            catch (Exception e)
+            {
+                report.Error($"AndroidManifest の生成に失敗: {e.Message}");
+                return;
+            }
+
+            if (ManifestHasPassthrough(manifestPath, marker))
+                report.Fixed($"{manifestPath} を生成しました（{marker} 入り）");
+            else
+                report.Error($"{manifestPath} を生成しましたが {marker} が入りませんでした");
+        }
+
+        static bool ManifestHasPassthrough(string path, string marker)
+        {
+            if (!File.Exists(path)) return false;
+            try { return File.ReadAllText(path).Contains(marker); }
+            catch (Exception) { return false; }
         }
 
         static void CheckArchitecture(Report report, bool apply)

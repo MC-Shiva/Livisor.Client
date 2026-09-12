@@ -60,7 +60,12 @@ PORTAL RIFT は白飛びから、DIGITAL DISSOLVE は黒から、LIQUID DIVE は
 **プロジェクト側**（`実機設定を点検` が見る。`実機設定を修正` で直せる）
 
 - `OVRProjectConfig.insightPassthroughSupport` が `None` 以外
-  — **これが最重要。`None` のままだと AndroidManifest に `com.oculus.feature.PASSTHROUGH` が入らず、実機で現実が一切見えない**
+- **`Assets/Plugins/Android/AndroidManifest.xml` に `com.oculus.feature.PASSTHROUGH` が入っていること**
+  — ここが一番の落とし穴。`insightPassthroughSupport` を `Supported` にするだけでは足りない。
+  Gradle 出力を実際に検査したところ、`com.oculus.supportedDevices` や `com.oculus.vr.focusaware` は
+  ビルド時の自動パッチで入るのに、**PASSTHROUGH だけは入らなかった**。
+  この manifest が無いまま焼くと「現実がまったく映らない APK」ができあがる。
+  `実機設定を修正` は Meta 公式の `OVRManifestPreprocessor` を叩いてこれを用意する
 - `systemLoadingScreenBackground` が `ContextualPassthrough`（起動時の黒画面を避ける）
 - Android ターゲットアーキテクチャが **ARM64**
 - スプラッシュスクリーンが無効
