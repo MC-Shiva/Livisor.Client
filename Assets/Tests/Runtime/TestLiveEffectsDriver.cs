@@ -121,7 +121,7 @@ public class TestLiveEffectsDriver : MonoBehaviour
         Click("cancel-schedule-button");
         yield return new WaitForSecondsRealtime(4f);
         Check(_effects.Count == count, "CANCEL prevents pending effect");
-        _root.Q<IntegerField>("volume-field").value = 42;
+        _root.Q<SliderInt>("volume-field").value = 42;
         Click("volume-button");
         yield return WaitFor(() => Mathf.Abs(_director.MusicPlayerController.MainSource.volume - 0.42f) < 0.001f, 5);
         Check(Mathf.Abs(_director.MusicPlayerController.MainSource.volume - 0.42f) < 0.001f, "Admin volume reaches Live");

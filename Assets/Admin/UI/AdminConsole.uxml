@@ -28,7 +28,8 @@
         <ui:VisualElement name="volume-panel" class="panel">
             <ui:Label text="Volume (0-100)" class="field-label"/>
             <ui:VisualElement name="volume-row" class="button-row">
-                <ui:IntegerField name="volume-field" value="100" class="console-input volume-input"/>
+                <ui:SliderInt name="volume-field" low-value="0" high-value="100" value="100" show-input-field="false" tooltip="音量を 0〜100% で調整し、APPLY で反映します。" class="volume-slider"/>
+                <ui:Label name="volume-value" text="100%" class="volume-value"/>
                 <ui:Button name="volume-button" text="APPLY" class="action-button"/>
             </ui:VisualElement>
             <ui:Label name="volume-status" text="-" class="status-label"/>

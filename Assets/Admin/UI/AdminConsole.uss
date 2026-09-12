@@ -400,7 +400,38 @@
     margin-right: 8px;
 }
 
-.volume-input {
-    width: 96px;
+.volume-slider {
+    width: 240px;
+    flex-shrink: 1;
+    min-width: 80px;
+    height: 32px;
+    margin-left: 10px;
     margin-right: 8px;
+}
+
+.volume-slider .unity-base-slider__tracker {
+    background-color: var(--color-border);
+    height: 4px;
+    border-radius: 2px;
+}
+
+.volume-slider .unity-base-slider__dragger {
+    width: 18px;
+    height: 18px;
+    margin-top: -7px;
+    background-color: var(--color-accent);
+    border-radius: 9px;
+    border-width: 0;
+}
+
+.volume-slider:hover .unity-base-slider__dragger,
+.volume-slider:focus .unity-base-slider__dragger {
+    background-color: var(--color-accent-hover);
+}
+
+.volume-value {
+    width: 48px;
+    flex-shrink: 0;
+    color: var(--color-text-primary);
+    -unity-text-align: middle-right;
 }

@@ -55,7 +55,7 @@ public class TestAdminDriver : MonoBehaviour
                 Click(root, "play-button"); _steps.Add("play");
                 yield return new WaitForSecondsRealtime(0.5f);
 
-                root.Q<IntegerField>("volume-field").value = 42;
+                root.Q<SliderInt>("volume-field").value = 42;
                 Click(root, "volume-button"); _steps.Add("volume 42");
                 yield return new WaitForSecondsRealtime(0.5f);
 
