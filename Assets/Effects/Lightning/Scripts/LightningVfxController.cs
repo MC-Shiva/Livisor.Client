@@ -64,6 +64,8 @@ public class LightningVfxController : MonoBehaviour
     [SerializeField] private float _boltLength = 4.8f;
 
     [Header("発火")]
+    [SerializeField, Tooltip("RecordScene向け。ライブが一時停止中でも雷を最後まで再生する。")]
+    private bool _useUnscaledTime;
     [Tooltip("テスト用の発火キー。Play 中に押すと雷が落ちる。")]
     [SerializeField] private KeyCode _testKey = KeyCode.L;
 
@@ -119,6 +121,7 @@ public class LightningVfxController : MonoBehaviour
         _strike.ConfigureShape(_angularity, _entanglement);
         _strike.ConfigureBundle(_bundleRadius);
         _strike.ConfigureTiming(_trunkHold, _trunkErase, _groundDuration);
+        _strike.UseUnscaledTime = _useUnscaledTime;
         _strike.Play(groundPoint + Vector3.up * Mathf.Max(0.1f, _startHeight), groundPoint);
     }
 

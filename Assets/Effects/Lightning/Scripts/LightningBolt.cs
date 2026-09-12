@@ -48,6 +48,7 @@ public class LightningBolt : MonoBehaviour
     private static readonly int StrikeTimeId = Shader.PropertyToID("StrikeTime");
 
     public bool IsPlaying => _playing;
+    public bool UseUnscaledTime { get; set; }
     public Style CurrentStyle { get => _style; set => _style = value; }
     public void ConfigurePerformance(Quality quality) => _quality = quality;
     public void ConfigureBundle(float radius) => _bundleRadius = Mathf.Max(0f, radius);
@@ -153,13 +154,15 @@ public class LightningBolt : MonoBehaviour
             seed, core, edge, _electricContrast, _arcSpeed);
         _stripVfx.gameObject.SetActive(true);
         _stripVfx.Reinit();
+        _stripVfx.pause = UseUnscaledTime;
         _stripVfx.SendEvent("OnPlay");
     }
 
     private void LateUpdate()
     {
         if (!_playing) return;
-        _elapsed += Time.deltaTime;
+        var deltaTime = UseUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
+        _elapsed += deltaTime;
         float age = _elapsed - _descentDuration;
         if (age >= Mathf.Max(_trunkHold + _trunkErase, _groundDuration))
         {
@@ -177,8 +180,14 @@ public class LightningBolt : MonoBehaviour
                 _impactVfx.transform.localScale = Vector3.one * (_impactRadius / 4f);
                 _impactVfx.gameObject.SetActive(true);
                 _impactVfx.Reinit();
+                _impactVfx.pause = UseUnscaledTime;
                 _impactVfx.SendEvent("OnPlay");
             }
+        }
+        if (UseUnscaledTime)
+        {
+            if (_stripVfx.gameObject.activeSelf) _stripVfx.Simulate(deltaTime, 1);
+            if (_impactVfx != null && _impactVfx.gameObject.activeSelf) _impactVfx.Simulate(deltaTime, 1);
         }
         _impact.Render(age);
         UpdateExtras(age);

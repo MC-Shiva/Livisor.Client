@@ -11,6 +11,10 @@ public class StageDirector : MonoBehaviour
     public bool useDirectorCameraInEditor = true;
     [Tooltip("Allow C or the Quest secondary button (B/Y) to switch to Unitychan's eyes.")]
     public bool enableUnityChanView;
+    [Tooltip("Questの右手A/Bでも視点操作を行う。RecordSceneではオフにして演出専用にする。")]
+    public bool useRightHandViewButtons = true;
+    [Tooltip("曲の終了時に銀テープを自動で発射する。")]
+    public bool fireSilverStreamersOnFinale = true;
     public Vector3 questXRStageOrigin = new Vector3(0.0f, 0.0f, 4.27f);
     public Vector3 questXRStageRotation = new Vector3(0.0f, 180.0f, 0.0f);
     public Vector3 questXRPreviewHeadPosition = new Vector3(0.0f, 1.35f, 0.0f);
@@ -173,6 +177,7 @@ public class StageDirector : MonoBehaviour
             Quaternion.Euler(questXRStageRotation),
             questXRPreviewHeadPosition,
             playerPenlightPrefab);
+        mainCameraRig.GetComponent<QuestXRInput>().useRightHandButtons = useRightHandViewButtons;
         mainCameraSwitcher = null;
         screenOverlays = new ScreenOverlay[0];
     }
@@ -345,7 +350,8 @@ public class StageDirector : MonoBehaviour
         if (!finaleFired)
         {
             finaleFired = true;
-            FireSilverStreamers();
+            if (fireSilverStreamersOnFinale)
+                FireSilverStreamers();
         }
         // 今回はシーンを自動リロードせず、最終位置で停止する。
         PausePerformance();

@@ -11,6 +11,16 @@ using UnityEngine;
 /// </summary>
 public static class TestScenes
 {
+    [MenuItem("Livisor/Tests/Record Effects")]
+    public static void RunRecordEffects()
+    {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            return;
+        EditorSceneManager.OpenScene("Assets/Scenes/RecordScene.unity");
+        new GameObject("TestRecordEffectsDriver").AddComponent<TestRecordEffectsDriver>();
+        EditorApplication.EnterPlaymode();
+    }
+
     /// <summary>DemoScene の事前定義をサーバーなしで全曲検証する。</summary>
     [MenuItem("Livisor/Tests/Demo Effects")]
     public static void RunDemoEffects()

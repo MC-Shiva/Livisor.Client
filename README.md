@@ -6,6 +6,8 @@ Livisor for Client
 
 通信なしのデモScene: `Assets/Scenes/DemoScene.unity`
 
+手動演出の録画用Scene: `Assets/Scenes/RecordScene.unity`
+
 観客ClientとAdminの接続、予約の形式、現在の対応範囲は
 [サーバーとの通信](Docs/server-communication.md)を参照してください。
 
@@ -27,6 +29,36 @@ Editorでは滑らかに移動し、HMD接続時は即座に切り替わりま�
 観客席では自分用ペンライトがQuestの右手コントローラーへ追従します。
 Unitychan目線へ切り替えると非表示になり、観客席へ戻ると現在の手元へ再表示されます。
 左手で使用する場合は `PlayerPenlight` Prefabの `Controller Node` を `Left Hand` に変更します。
+
+## RecordSceneで録画用の演出を操作
+
+`Assets/Scenes/RecordScene.unity` を開いてPlayすると、サーバー・Admin・ラズパイへの接続なしで
+ライブが自動再生されます。舞台、音楽、Unitychan、ペンライト、Questカメラは既存のライブと共通です。
+録画機能は含みません。Quest側などの録画機能を使用してください。
+
+| 操作 | Questコントローラー | Unity EditorのGameビュー |
+| --- | --- | --- |
+| 雷を落とす | 右手 A | L |
+| 銀テープを発射 | 右手 B | T |
+| 正面を合わせ直す | 左手 X | R |
+| 観客席／Unitychan目線を切り替え | 左手 Y | C |
+| ライブを再開／一時停止 | — | S / P |
+
+A/Bは押した瞬間に1回発火し、離して押し直すと繰り返し使用できます。同時押しにも対応します。
+雷の落下位置は `Stage Director / Lightning Target` のTransformで変更できます。
+同オブジェクトの `LightningVfxController` で雷の見た目を調整できます。
+
+Demoの時刻指定による雷・紙吹雪・銀テープ、曲終了時の銀テープ自動発射、ステータス表示はありません。
+モデル付属のモーション確認用UIも、このシーンでは無効にしています。
+曲終了時にはライブが一時停止し、その後もA/Bから演出を呼び出せます。
+開始時に待機させたい場合は `RecordSceneController` の `Play On Start` をオフにし、EditorでSを押します。
+
+Build SettingsのScene Listには無効状態で追加しています。Questへ録画用ビルドを作る場合は
+`RecordScene` だけを有効にしてください。作業前のDemoSceneのビルド選択は保持しています。
+
+Unityの `Livisor > Tests > Record Effects` でローカル再生、演出の発火、長押し、再押下、
+同時押し、曲終了後の発火を検証できます。結果は `Logs/record-effects-check.json` に出力します。
+このテストはボタン状態を入力処理へ直接渡すため、Quest実機のA/B/X/Y入力は別途実機で確認してください。
 
 ## Unity CLIで疎通確認
 
