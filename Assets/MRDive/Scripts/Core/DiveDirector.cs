@@ -22,7 +22,7 @@ namespace Livisor.MRDive
     {
         [Header("遷移先")]
         [Tooltip("ダイブ後に読み込むシーン名。Build Settings に登録されている必要がある。")]
-        [SerializeField] string targetSceneName = "Main";
+        [SerializeField] string targetSceneName = "LiveScene";
 
         [Tooltip("演出中に遷移先を裏で読み込む。重いシーンほど効く。")]
         [SerializeField] bool preloadTargetScene = true;

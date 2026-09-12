@@ -26,10 +26,10 @@ namespace Livisor.MRDive.EditorTools
         // ------------------------------------------------------------------
 
         const string DiveScenePath = "Assets/Scenes/DiveEntry.unity";
-        const string MainScenePath = "Assets/Scenes/Main.unity";
+        const string MainScenePath = "Assets/Scenes/LiveScene.unity";
 
         /// <summary>DiveDirector.targetSceneName に入れる遷移先シーン名。</summary>
-        const string TargetSceneName = "Main";
+        const string TargetSceneName = "LiveScene";
 
         const string LogTag = "[MRDive]";
 

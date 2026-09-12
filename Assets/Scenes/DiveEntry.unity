@@ -690,7 +690,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39626e7ced8d8433486e73c2dc7af969, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Livisor.MRDive.DiveDirector
-  targetSceneName: Main
+  targetSceneName: LiveScene
   preloadTargetScene: 1
   loadTargetScene: 1
   arrivalFadeDuration: 1.1
