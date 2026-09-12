@@ -21,7 +21,10 @@ public class TestDemoEffectsDriver : MonoBehaviour
     private readonly List<double> _times = new();
     private readonly List<string> _errors = new();
     private StageDirector _director;
+    private DemoSceneController _demo;
     private bool _lightningStarted;
+    private bool _lightningPositionsMatch = true;
+    private readonly List<Vector3> _lightningPoints = new();
     private bool _confettiStopped, _confettiDraining;
     private float _previousVolume;
 
@@ -45,8 +48,19 @@ public class TestDemoEffectsDriver : MonoBehaviour
             _times.Add(_director != null ? _director.MusicTimeSeconds : -1);
             if (message == EffectPrefix + EffectNames.Lightning)
             {
-                var lightning = FindFirstObjectByType<LightningBolt>();
+                var lightning = FindObjectsByType<LightningBolt>(FindObjectsSortMode.None).FirstOrDefault(b => b.IsPlaying);
                 _lightningStarted |= lightning != null && lightning.IsPlaying;
+                var targets = DemoLightningSchedule.Create().OrderBy(c => c.Seconds).ToArray();
+                var cue = targets[_lightningPoints.Count];
+                var expectedPoint = cue.Target == "audience" ? _demo.lightningAudiencePoint.position
+                    : cue.Target == "stage" ? _demo.lightningStagePoint.position
+                    : cue.Target == "unity-chan" ? new Plane(_demo.lightningOrigin.up, _demo.lightningOrigin.position)
+                        .ClosestPointOnPlane(_director.PerformerHips.position)
+                    : _demo.lightningOrigin.position + _demo.lightningOrigin.rotation * cue.LocalPosition;
+                var point = lightning != null ? TestLightningPositions.Ground(lightning) : Vector3.positiveInfinity;
+                _lightningPositionsMatch &= Vector3.Distance(point, expectedPoint) < 0.001f;
+                _lightningPoints.Add(point);
+                if (_lightningPoints.Count <= 3) StartCoroutine(CaptureLightning(_lightningPoints.Count));
             }
             if (message == EffectPrefix + EffectNames.ConfettiOff)
             {
@@ -65,9 +79,12 @@ public class TestDemoEffectsDriver : MonoBehaviour
         AudioListener.volume = 0f;
 
         _director = FindFirstObjectByType<StageDirector>();
-        var demo = FindFirstObjectByType<DemoSceneController>();
-        var defined = DefaultTimeline.Create().OrderBy(a => a.Time).ToArray();
-        var expected = defined.Select(a => a.Value.Text).ToArray();
+        var demo = _demo = FindFirstObjectByType<DemoSceneController>();
+        var defined = DefaultTimeline.Create().Where(a => a.Value.Text != EffectNames.Lightning)
+            .Select(a => (seconds: PlaybackTime.Parse(a.Time).TotalSeconds, effect: a.Value.Text))
+            .Concat(DemoLightningSchedule.Create().Select(c => (seconds: c.Seconds, effect: EffectNames.Lightning)))
+            .OrderBy(a => a.seconds).ToArray();
+        var expected = defined.Select(a => a.effect).ToArray();
         var deadline = Time.realtimeSinceStartup + 320f;
         var started = false;
         var lastMusicTime = -1.0;
@@ -133,8 +150,10 @@ public class TestDemoEffectsDriver : MonoBehaviour
         report.times = _times.ToArray();
         report.lastMusicTimeSeconds = lastMusicTime;
         report.lightningStarted = _lightningStarted;
+        report.lightningPositionsMatch = _lightningPositionsMatch && _lightningPoints.Count == DemoLightningSchedule.Create().Length;
+        report.lightningPoints = _lightningPoints.ToArray();
         report.timingWorks = _times.Count == defined.Length && defined.Select((a, i) =>
-            Math.Abs(_times[i] - PlaybackTime.Parse(a.Time).TotalSeconds) < 3).All(ok => ok);
+            Math.Abs(_times[i] - a.seconds) < 3).All(ok => ok);
 
         report.confettiStopped = _confettiStopped;
         report.confettiDraining = _confettiDraining;
@@ -161,7 +180,7 @@ public class TestDemoEffectsDriver : MonoBehaviour
         report.ok = started && report.offline && report.pauseWorks && report.confettiEmitted
             && report.confettiStopped && report.confettiDraining && report.confettiCleared
             && report.confettiRestarted && report.confettiOnIsIdempotent
-            && report.lightningStarted && report.silverEmitted && report.silverFinaleEmitted
+            && report.lightningStarted && report.lightningPositionsMatch && report.silverEmitted && report.silverFinaleEmitted
             && report.silverRepeated && report.timingWorks
             && report.statusPauseWorks && report.statusShowsEnd && report.statusShowsEffects
             && report.effects.SequenceEqual(expected) && report.errors.Length == 0;
@@ -179,10 +198,21 @@ public class TestDemoEffectsDriver : MonoBehaviour
 #endif
     }
 
+    private IEnumerator CaptureLightning(int index)
+    {
+        yield return new WaitForSecondsRealtime(0.15f);
+        yield return new WaitForEndOfFrame();
+        var directory = Path.Combine(Application.dataPath, "..", "Logs");
+        Directory.CreateDirectory(directory);
+        ScreenCapture.CaptureScreenshot(Path.Combine(directory, $"lightning-position-{index}.png"));
+    }
+
     [Serializable]
     private class Report
     {
         public bool ok, offline, pauseChecked, pauseWorks, confettiEmitted, lightningStarted;
+        public bool lightningPositionsMatch;
+        public Vector3[] lightningPoints;
         public bool confettiStopped, confettiDraining, confettiCleared, silverEmitted, silverRepeated, timingWorks;
         public bool confettiRestarted, confettiOnIsIdempotent, silverFinaleEmitted;
         public bool statusPauseWorks, statusShowsEnd, statusShowsEffects;

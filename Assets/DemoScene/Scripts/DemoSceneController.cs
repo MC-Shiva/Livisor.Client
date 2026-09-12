@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Livisor.Shared.Common;
 using Livisor.Shared.DTO;
 using UnityEngine;
@@ -7,8 +8,7 @@ using UnityEngine;
 /// <summary>
 /// 通信を使わないDemoScene専用のライブ操作。
 /// StageDirectorの通常の再生経路を使い、音楽と演出のタイミングを維持する。
-/// デフォルト演出（Issue #22）はサーバーを介さず、Shared の <see cref="DefaultTimeline"/> を直接読んで
-/// 音楽の再生位置で発火する。
+/// 雷はClientのC#定義、その他の演出はSharedの定義を音楽の再生位置で発火する。
 /// </summary>
 [DefaultExecutionOrder(100)]
 [DisallowMultipleComponent]
@@ -20,6 +20,14 @@ public sealed class DemoSceneController : MonoBehaviour
     [SerializeField, Tooltip("Play Mode開始時にライブを自動再生する。")]
     bool _playOnStart = true;
 
+    [Header("Demo lightning positions")]
+    [Tooltip("床面の原点。回転で座標軸の向きを決める。座標の単位はm。")]
+    public Transform lightningOrigin;
+    public Transform lightningAudiencePoint;
+    public Transform lightningStagePoint;
+
+    readonly DemoLightningSchedule.Cue[] _lightningCues = DemoLightningSchedule.Create().OrderBy(c => c.Seconds).ToArray();
+    int _nextLightning;
     readonly TimelineActionPlayback _playback = new();
     readonly Queue<string> _recentEffects = new();
     EffectDispatcher _effects;
@@ -44,7 +52,8 @@ public sealed class DemoSceneController : MonoBehaviour
         }
 
         _effects = new EffectDispatcher(_stageDirector);
-        _playback.Load(DefaultTimeline.Create());
+        // Sharedの雷は使わず、Demo専用の時刻・位置を使う。
+        _playback.Load(DefaultTimeline.Create().Where(a => a.Value.Text != EffectNames.Lightning));
         Debug.Log($"[DemoScene] default actions loaded: {_playback.Count}", this);
 
         if (_playOnStart)
@@ -76,6 +85,7 @@ public sealed class DemoSceneController : MonoBehaviour
             _finished = true;
         }
         _playback.Advance(position, Fire);
+        AdvanceLightning(position);
     }
 
     void OnGUI()
@@ -120,7 +130,38 @@ public sealed class DemoSceneController : MonoBehaviour
         Debug.Log("[DemoScene] Pause", this);
     }
 
-    // Shared の定義を実行する。
+    internal void AdvanceLightning(double position)
+    {
+        if (position < 0) return;
+        while (_nextLightning < _lightningCues.Length && _lightningCues[_nextLightning].Seconds <= position)
+        {
+            var cue = _lightningCues[_nextLightning++];
+            _effects.FireLightning(ResolveLightningPosition(cue));
+            RecordEffect($"雷 ({cue.Target ?? cue.LocalPosition.ToString()})");
+        }
+    }
+
+    internal Vector3 ResolveLightningPosition(DemoLightningSchedule.Cue cue)
+    {
+        if (cue.Target == null)
+            return lightningOrigin.position + lightningOrigin.rotation * cue.LocalPosition;
+        return cue.Target switch
+        {
+            "unity-chan" => new Plane(lightningOrigin.up, lightningOrigin.position)
+                .ClosestPointOnPlane(_stageDirector.PerformerHips.position),
+            "audience" => lightningAudiencePoint.position,
+            "stage" => lightningStagePoint.position,
+            _ => throw new ArgumentException($"不明な雷の対象: {cue.Target}"),
+        };
+    }
+
+    void RecordEffect(string name)
+    {
+        if (_recentEffects.Count == 5) _recentEffects.Dequeue();
+        _recentEffects.Enqueue($"{FormatTime(_positionSeconds)}  {name}");
+    }
+
+    // Shared の紙吹雪・銀テープなどを実行する。
     void Fire(TimelineAction action)
     {
         switch (action.Action)
@@ -139,8 +180,7 @@ public sealed class DemoSceneController : MonoBehaviour
                     };
                     if (action.Value.Text == EffectNames.ConfettiOn) _confettiOn = true;
                     if (action.Value.Text == EffectNames.ConfettiOff) _confettiOn = false;
-                    if (_recentEffects.Count == 5) _recentEffects.Dequeue();
-                    _recentEffects.Enqueue($"{FormatTime(_positionSeconds)}  {name}");
+                    RecordEffect(name);
                 }
                 break;
             case ActionType.Play:

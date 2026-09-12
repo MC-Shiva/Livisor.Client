@@ -53,6 +53,13 @@ public sealed class EffectDispatcher
         Debug.Log($"[Effect] {effectName}");
     }
 
+    // DemoはC#で指定した着弾点を使う。
+    public void FireLightning(Vector3 worldPosition)
+    {
+        ResolveLightning().StrikeAt(worldPosition);
+        Debug.Log($"[Effect] {EffectNames.Lightning}");
+    }
+
     // 観客席の円弧の中からランダムに 1 点選ぶ（「観客に落とす」演出案）。基準は StageDirector.audiencePenlightPlacement で、
     // その前方（+Z）が円弧の中央。未設定ならシーン原点を基準にする。
     private Vector3 RandomAudiencePoint()

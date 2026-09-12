@@ -30,6 +30,8 @@ public class StageDirector : MonoBehaviour
     // Audience placement.
     public Transform audiencePenlightPlacement;
 
+    public Transform PerformerHips { get; private set; }
+
     // Camera points.
     public Transform[] cameraPoints;
 
@@ -95,7 +97,12 @@ public class StageDirector : MonoBehaviour
 
         objectsOnTimeline = new GameObject[prefabsOnTimeline.Length];
         for (var i = 0; i < prefabsOnTimeline.Length; i++)
+        {
             objectsOnTimeline[i] = (GameObject)Instantiate(prefabsOnTimeline[i]);
+            var performer = objectsOnTimeline[i].GetComponentInChildren<Animator>();
+            if (PerformerHips == null && performer != null && performer.isHuman)
+                PerformerHips = performer.GetBoneTransform(HumanBodyBones.Hips);
+        }
 
         var audiencePenlights = new List<AudiencePenlightController>();
         foreach (var p in miscPrefabs)
