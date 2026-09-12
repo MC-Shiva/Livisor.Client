@@ -1,7 +1,7 @@
 using System;
 using MagicOnion;
 using MagicOnion.Client;
-using Livisor.Shared;
+using Livisor.Shared.UnaryServices;
 using UnityEngine;
 
 public class SampleScene : MonoBehaviour
