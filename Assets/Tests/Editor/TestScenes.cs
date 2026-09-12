@@ -76,7 +76,7 @@ public static class TestScenes
         EditorApplication.EnterPlaymode();
     }
 
-    /// <summary>管理者画面の全機能（入力チェック・再生・二重再生・音量の拒否と反映・予約・取消・停止・再開・切断・再接続）を通す版。</summary>
+    /// <summary>管理者画面の全機能（入力チェック・再生・二重再生・音量スライダーの範囲と反映・予約・取消・停止・再開・切断・再接続）を通す版。</summary>
     [MenuItem("Livisor/Tests/Admin (all features)")]
     public static void RunAdminFull()
     {

@@ -105,15 +105,20 @@ public class TestAdminFullDriver : MonoBehaviour
         yield return WaitSent(root);
         Check(t2 != null && t1 != null && t2.Playing && t2.StartedAtServerMs == t1.StartedAtServerMs, "再生中の PLAY は開始時刻を変えない");
 
-        // 5. 音量 150 → 拒否
+        // 5. スライダーの上下限と選択値表示。APPLY までは送信しない。
         var v0 = _volumes.Count;
-        root.Q<IntegerField>("volume-field").value = 150;
-        Click(root, "volume-button");
+        var volumeSlider = root.Q<SliderInt>("volume-field");
+        Check(volumeSlider.lowValue == 0 && volumeSlider.highValue == 100, "音量の範囲は 0〜100");
+        volumeSlider.value = 150;
+        Check(volumeSlider.value == 100 && root.Q<Label>("volume-value").text == "100%", "音量の上限は 100%");
+        volumeSlider.value = -1;
+        Check(volumeSlider.value == 0 && root.Q<Label>("volume-value").text == "0%", "音量の下限は 0%");
         yield return new WaitForSecondsRealtime(0.5f);
-        Check(root.Q<Label>("status-label").text.Contains("0〜100") && _volumes.Count == v0, "音量 150 は送らずに拒否される");
+        Check(_volumes.Count == v0, "スライダー操作だけでは音量を送信しない");
 
         // 6. 音量 42
-        root.Q<IntegerField>("volume-field").value = 42;
+        root.Q<SliderInt>("volume-field").value = 42;
+        Check(root.Q<Label>("volume-value").text == "42%", "選択した音量を 42% と表示する");
         Click(root, "volume-button");
         yield return WaitUntil(() => _volumes.Count > v0, 5f);
         yield return new WaitForSecondsRealtime(0.3f);

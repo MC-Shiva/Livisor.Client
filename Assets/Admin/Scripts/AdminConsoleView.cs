@@ -49,7 +49,8 @@ public class AdminConsoleView : MonoBehaviour
     private Button _playButton;
     private Button _stopButton;
     private Label _transportLabel;
-    private IntegerField _volumeField;
+    private SliderInt _volumeField;
+    private Label _volumeValueLabel;
     private Button _volumeButton;
     private Label _volumeLabel;
     private ListView _timelineList;
@@ -81,7 +82,9 @@ public class AdminConsoleView : MonoBehaviour
         _playButton = root.Q<Button>("play-button");
         _stopButton = root.Q<Button>("stop-button");
         _transportLabel = root.Q<Label>("transport-status");
-        _volumeField = root.Q<IntegerField>("volume-field");
+        _volumeField = root.Q<SliderInt>("volume-field");
+        _volumeValueLabel = root.Q<Label>("volume-value");
+        _volumeValueLabel.text = $"{_volumeField.value}%";
         _volumeButton = root.Q<Button>("volume-button");
         _volumeLabel = root.Q<Label>("volume-status");
         _timelineList = root.Q<ListView>("timeline-list");
@@ -102,6 +105,7 @@ public class AdminConsoleView : MonoBehaviour
         _playButton.clicked += OnPlayClicked;
         _stopButton.clicked += OnStopClicked;
         _volumeButton.clicked += OnVolumeClicked;
+        _volumeField.RegisterValueChangedCallback(OnVolumeValueChanged);
         _scheduleButton.clicked += OnScheduleClicked;
         _cancelScheduleButton.clicked += OnCancelScheduleClicked;
 
@@ -118,6 +122,7 @@ public class AdminConsoleView : MonoBehaviour
         if (_playButton != null) _playButton.clicked -= OnPlayClicked;
         if (_stopButton != null) _stopButton.clicked -= OnStopClicked;
         if (_volumeButton != null) _volumeButton.clicked -= OnVolumeClicked;
+        if (_volumeField != null) _volumeField.UnregisterValueChangedCallback(OnVolumeValueChanged);
         if (_scheduleButton != null) _scheduleButton.clicked -= OnScheduleClicked;
         if (_cancelScheduleButton != null) _cancelScheduleButton.clicked -= OnCancelScheduleClicked;
     }
@@ -242,6 +247,8 @@ public class AdminConsoleView : MonoBehaviour
 
         _ = RunAsync($"予約 {actions.Length} 件の追加", () => _client.ScheduleActionsAsync(actions));
     }
+
+    private void OnVolumeValueChanged(ChangeEvent<int> evt) => _volumeValueLabel.text = $"{evt.newValue}%";
 
     /// <summary>音量を状態同期に publish する。同じ room の全員に届き、自分にも戻ってくる。</summary>
     private async void OnVolumeClicked()

@@ -148,7 +148,7 @@ public sealed class TestLiveDeviceDriver : MonoBehaviour
 
     async Task SetVolume(int value)
     {
-        root.Q<IntegerField>("volume-field").value = value;
+        root.Q<SliderInt>("volume-field").value = value;
         await Click("volume-button");
         await Until(() =>
         {
