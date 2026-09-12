@@ -438,7 +438,7 @@ MonoBehaviour:
   ignoreFastForward: 1
   useDirectorCameraInEditor: 0
   enableUnityChanView: 1
-  questXRStageOrigin: {x: 0, y: 0, z: 4.27}
+  questXRStageOrigin: {x: 0, y: -0.5, z: 5.5}
   questXRStageRotation: {x: 0, y: 180, z: 0}
   questXRPreviewHeadPosition: {x: 0, y: 1.35, z: 0}
   musicPlayerPrefab: {fileID: 100000, guid: 2b9a716c1d31d45a5b906738bd5ee33e, type: 3}
@@ -457,26 +457,13 @@ MonoBehaviour:
   - {fileID: 100000, guid: c70aff9297e6d4e9fa6e82c0038ded02, type: 3}
   - {fileID: 100000, guid: 0291ac2d4e1e54df6bfa4776e3683a24, type: 3}
   - {fileID: 100000, guid: 8796afbecd124345f6789abcdef01234, type: 3}
+  silverStreamers: {fileID: 0}
   audiencePenlightPlacement: {fileID: 2134378601}
   cameraPoints:
   - {fileID: 1750265709}
   - {fileID: 2112224815}
   - {fileID: 1821063586}
   overlayIntensity: 1
---- !u!114 &2134378504
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2134378499}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2941fff59cdb43a7a6ca67f454440c26, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DemoSceneController
-  _stageDirector: {fileID: 2134378500}
-  _playOnStart: 1
 --- !u!4 &2134378501
 Transform:
   m_ObjectHideFlags: 0
@@ -528,13 +515,27 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
   m_IsGlobal: 1
   priority: 10
   blendDistance: 0
   weight: 1
   sharedProfile: {fileID: 11400000, guid: 4cd2a161f9814fbe85983388a8ef701a, type: 2}
+--- !u!114 &2134378504
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2134378499}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2941fff59cdb43a7a6ca67f454440c26, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DemoSceneController
+  _stageDirector: {fileID: 2134378500}
+  _playOnStart: 1
 --- !u!1 &2134378600
 GameObject:
   m_ObjectHideFlags: 0
