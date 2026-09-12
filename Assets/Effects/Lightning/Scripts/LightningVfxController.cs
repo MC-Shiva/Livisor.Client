@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -38,6 +39,7 @@ public class LightningVfxController : MonoBehaviour
     [Tooltip("着弾から外へ走る地面の放電の時間。")]
     [SerializeField, Min(0.01f)] private float _groundDuration = 0.65f;
     private LightningBolt _strike;
+    private readonly List<LightningBolt> _strikes = new();
 
     [Header("落下位置")]
     [Tooltip("落下地点の基準。未設定ならこの GameObject の位置を使う。")]
@@ -74,11 +76,18 @@ public class LightningVfxController : MonoBehaviour
 
     private void EnsureStrike()
     {
-        if (_strike != null) return;
+        // 同時刻の別位置への雷を上書きしない。再生が終わった雷は再利用する。
+        foreach (var strike in _strikes)
+            if (!strike.IsPlaying)
+            {
+                _strike = strike;
+                return;
+            }
         var go = new GameObject("Descending Lightning");
         go.layer = gameObject.layer;
         go.transform.SetParent(transform, false);
         _strike = go.AddComponent<LightningBolt>();
+        _strikes.Add(_strike);
     }
 
     private void Update()
