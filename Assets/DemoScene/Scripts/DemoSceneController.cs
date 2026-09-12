@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Livisor.Shared.Common;
 using Livisor.Shared.DTO;
 using UnityEngine;
@@ -19,7 +21,12 @@ public sealed class DemoSceneController : MonoBehaviour
     bool _playOnStart = true;
 
     readonly TimelineActionPlayback _playback = new();
+    readonly Queue<string> _recentEffects = new();
     EffectDispatcher _effects;
+    double _positionSeconds;
+    bool _confettiOn;
+    bool _finished;
+    GUIStyle _statusStyle;
 
     void Awake()
     {
@@ -57,8 +64,49 @@ public sealed class DemoSceneController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.P))
             PausePerformance();
 
-        _playback.Advance(_stageDirector.MusicTimeSeconds, Fire);
+        var position = _stageDirector.MusicTimeSeconds;
+        if (position >= 0)
+        {
+            _positionSeconds = position;
+            _finished = false;
+        }
+        else if (_positionSeconds > 0 && !_stageDirector.IsPerformancePaused)
+        {
+            _positionSeconds = _stageDirector.MusicPlayerController.MainSource.clip.length;
+            _finished = true;
+        }
+        _playback.Advance(position, Fire);
     }
+
+    void OnGUI()
+    {
+        if (_stageDirector == null)
+            return;
+
+        _statusStyle ??= new GUIStyle(GUI.skin.box)
+        {
+            alignment = TextAnchor.UpperLeft,
+            fontSize = 18,
+            padding = new RectOffset(12, 12, 10, 10),
+        };
+        var text = GetStatusText();
+        var width = Mathf.Min(440, Screen.width - 24);
+        GUI.Box(new Rect(12, 12, width, _statusStyle.CalcHeight(new GUIContent(text), width)), text, _statusStyle);
+    }
+
+    internal string GetStatusText()
+    {
+        var source = _stageDirector.MusicPlayerController?.MainSource;
+        var duration = source != null && source.clip != null ? source.clip.length : 0;
+        var state = source != null && source.isPlaying ? "再生中"
+            : _finished ? "終了"
+            : _stageDirector.IsPerformancePaused ? "一時停止" : "待機中";
+        return $"DEMO  {FormatTime(_positionSeconds)} / {FormatTime(duration)}  {state}\n"
+            + $"紙吹雪: {(_confettiOn ? "ON" : "OFF")}\n\n直近の演出（曲内の実行時刻）\n"
+            + (_recentEffects.Count == 0 ? "まだ発火していません" : string.Join("\n", _recentEffects));
+    }
+
+    static string FormatTime(double seconds) => TimeSpan.FromSeconds(seconds).ToString(@"mm\:ss\.ff");
 
     public void ResumePerformance()
     {
@@ -79,7 +127,21 @@ public sealed class DemoSceneController : MonoBehaviour
         {
             case ActionType.Effect:
                 if (action.Value.Kind == ActionValueKind.Text)
+                {
                     _effects.Fire(action.Value.Text);
+                    var name = action.Value.Text switch
+                    {
+                        EffectNames.ConfettiOn => "紙吹雪 ON",
+                        EffectNames.ConfettiOff => "紙吹雪 OFF",
+                        EffectNames.Lightning => "雷",
+                        EffectNames.SilverStreamer => "銀テープ",
+                        _ => action.Value.Text,
+                    };
+                    if (action.Value.Text == EffectNames.ConfettiOn) _confettiOn = true;
+                    if (action.Value.Text == EffectNames.ConfettiOff) _confettiOn = false;
+                    if (_recentEffects.Count == 5) _recentEffects.Dequeue();
+                    _recentEffects.Enqueue($"{FormatTime(_positionSeconds)}  {name}");
+                }
                 break;
             case ActionType.Play:
                 if (action.Value.Kind == ActionValueKind.Bool)

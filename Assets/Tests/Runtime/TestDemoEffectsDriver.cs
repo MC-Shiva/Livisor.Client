@@ -65,6 +65,7 @@ public class TestDemoEffectsDriver : MonoBehaviour
         AudioListener.volume = 0f;
 
         _director = FindFirstObjectByType<StageDirector>();
+        var demo = FindFirstObjectByType<DemoSceneController>();
         var defined = DefaultTimeline.Create().OrderBy(a => a.Time).ToArray();
         var expected = defined.Select(a => a.Value.Text).ToArray();
         var deadline = Time.realtimeSinceStartup + 320f;
@@ -98,9 +99,11 @@ public class TestDemoEffectsDriver : MonoBehaviour
                 var source = _director.MusicPlayerController.MainSource;
                 var sample = source.timeSamples;
                 var count = _effects.Count;
+                var pausedStatus = demo.GetStatusText();
                 yield return new WaitForSecondsRealtime(0.5f);
                 report.pauseChecked = true;
                 report.pauseWorks = source.timeSamples == sample && _effects.Count == count;
+                report.statusPauseWorks = pausedStatus.Contains("一時停止") && pausedStatus == demo.GetStatusText();
                 _director.ResumePerformance();
 
                 var paper = confetti != null ? confetti.GetComponentsInChildren<ParticleSystem>() : Array.Empty<ParticleSystem>();
@@ -117,7 +120,8 @@ public class TestDemoEffectsDriver : MonoBehaviour
             yield return null;
         }
         report.silverBeforeFinale = silver != null ? silver.ParticleCount : 0;
-        var finaleDeadline = Time.realtimeSinceStartup + 6f;
+        // Editor が重いとアニメーションが音源より遅れるため、終了イベントまで余裕を持って待つ。
+        var finaleDeadline = Time.realtimeSinceStartup + 30f;
         while (_director != null && !_director.IsPerformancePaused && Time.realtimeSinceStartup < finaleDeadline)
             yield return null;
         yield return new WaitForSecondsRealtime(1f); // Prefab の soundTimingOffset は -0.6 秒。音の後の射出を待つ。
@@ -134,6 +138,10 @@ public class TestDemoEffectsDriver : MonoBehaviour
 
         report.confettiStopped = _confettiStopped;
         report.confettiDraining = _confettiDraining;
+        var status = demo.GetStatusText();
+        report.statusShowsEnd = status.Contains("終了");
+        report.statusShowsEffects = status.Contains("紙吹雪: OFF")
+            && status.Contains("雷") && status.Contains("紙吹雪 OFF") && status.Contains("銀テープ");
 
         // 既存の銀テープが自然に消えた後、曲終了後にも再射出できることを確認する。
         var dispatcher = new EffectDispatcher(_director);
@@ -155,6 +163,7 @@ public class TestDemoEffectsDriver : MonoBehaviour
             && report.confettiRestarted && report.confettiOnIsIdempotent
             && report.lightningStarted && report.silverEmitted && report.silverFinaleEmitted
             && report.silverRepeated && report.timingWorks
+            && report.statusPauseWorks && report.statusShowsEnd && report.statusShowsEffects
             && report.effects.SequenceEqual(expected) && report.errors.Length == 0;
         var result = JsonUtility.ToJson(report, true);
         var path = Path.Combine(Application.dataPath, "..", "Logs", "demo-effects-check.json");
@@ -176,6 +185,7 @@ public class TestDemoEffectsDriver : MonoBehaviour
         public bool ok, offline, pauseChecked, pauseWorks, confettiEmitted, lightningStarted;
         public bool confettiStopped, confettiDraining, confettiCleared, silverEmitted, silverRepeated, timingWorks;
         public bool confettiRestarted, confettiOnIsIdempotent, silverFinaleEmitted;
+        public bool statusPauseWorks, statusShowsEnd, statusShowsEffects;
         public int silverBeforeFinale, silverFinaleParticles;
         public double lastMusicTimeSeconds;
         public string[] effects, errors;
