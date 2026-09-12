@@ -18,7 +18,7 @@ public sealed class DemoSceneController : MonoBehaviour
     [SerializeField, Tooltip("Play Mode開始時にライブを自動再生する。")]
     bool _playOnStart = true;
 
-    readonly DefaultActionPlayback _defaults = new();
+    readonly TimelineActionPlayback _playback = new();
     EffectDispatcher _effects;
 
     void Awake()
@@ -37,8 +37,8 @@ public sealed class DemoSceneController : MonoBehaviour
         }
 
         _effects = new EffectDispatcher(_stageDirector);
-        _defaults.Load(DefaultActionSet.Create());
-        Debug.Log($"[DemoScene] default actions loaded: {_defaults.Count}", this);
+        _playback.Load(DefaultActionSet.Create());
+        Debug.Log($"[DemoScene] default actions loaded: {_playback.Count}", this);
 
         if (_playOnStart)
             ResumePerformance();
@@ -57,7 +57,7 @@ public sealed class DemoSceneController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.P))
             PausePerformance();
 
-        _defaults.Advance(_stageDirector.MusicTimeSeconds, Fire);
+        _playback.Advance(_stageDirector.MusicTimeSeconds, Fire);
     }
 
     public void ResumePerformance()

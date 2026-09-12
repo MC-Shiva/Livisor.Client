@@ -36,9 +36,13 @@ At("00:03:30:00", ActionType.Effect, EffectNames.ConfettiOff),
 
 ## 実行の流れ
 
-1. `DemoSceneController.Start()`が`DefaultActionSet.Create()`を読み込む。
-2. `DefaultActionPlayback`が時刻順に並べる。
+1. `DemoSceneController.Start()`が`DefaultActionSet.Create()`で一覧を取得する。
+2. `TimelineActionPlayback.Load()`が一覧をメモリに保持し、時刻順に並べる。
 3. 曲の再生位置が指定時刻に達すると、`EffectDispatcher`が該当する演出を実行する。
+
+`TimelineActionPlayback`は渡された一覧を再生するクラスです。データの取得元は呼び出し側が決めます。
+DemoSceneは起動時に一度読み込み、毎フレーム`Advance()`に曲の再生位置を渡します。
+`EffectDispatcher`は演出名を紙吹雪・雷・銀テープの処理につなぎます。DemoSceneとLiveSceneが共用します。
 
 再生位置は音源の`timeSamples`から求めます。シーンを開いてからの経過時間ではありません。
 一時停止中は次の演出へ進みません。再開すると、続きの位置から実行します。
@@ -66,12 +70,22 @@ Play Mode中にスクリプトが再コンパイルされると、初期化状�
 
 ## 動作を確認する
 
+テスト用コードは`Assets/Tests`にまとめ、ファイル名とクラス名に`Test`を付けています。
+
+| 配置 | 役割 |
+|---|---|
+| `Assets/Timeline/Scripts/TimelineActionPlayback.cs` | メモリ上のアクション一覧を曲の位置に合わせて再生する |
+| `Assets/Effects/Scripts/EffectDispatcher.cs` | 演出名に対応するUnityの演出を実行する |
+| `Assets/Tests/Editor/TestTimelineActionPlayback.cs` | 一覧の実行順序や二重実行の防止を検証する |
+| `Assets/Tests/Editor/TestScenes.cs` | シーンを使うテストの起動メニュー |
+| `Assets/Tests/Runtime/Test*Driver.cs` | Play Mode中に動くシーンの検証処理 |
+
 Unity Editorで次のメニューを実行します。
 
 | メニュー | 確認内容 |
 |---|---|
-| `Livisor > Default Actions Check` | 時刻の解析、実行順序、二重実行の防止、Sharedの定義 |
-| `Livisor > Demo Effects Check` | DemoSceneを約4分半再生し、指定時刻の実行、紙吹雪の自然停止・再オン、雷の再生、銀テープの定義・終了時・再射出、一時停止・再開を確認 |
+| `Livisor > Tests > Timeline Action Playback` | 時刻の解析、実行順序、二重実行の防止、Sharedの定義 |
+| `Livisor > Tests > Demo Effects` | DemoSceneを約4分半再生し、指定時刻の実行、紙吹雪の自然停止・再オン、雷の再生、銀テープの定義・終了時・再射出、一時停止・再開を確認 |
 
 全曲の検証は音をミュートして進み、完了するとPlay Modeを終了します。
 結果は`Logs/demo-effects-check.json`に出力されます。最新の実行が完了してから`ok`と`errors`を確認してください。
@@ -80,8 +94,8 @@ Unity Editorで次のメニューを実行します。
 Editorを開いている場合は、ClientのルートからUnity CLIでも起動できます。
 
 ```sh
-unity command eval --code 'DefaultActionPlaybackCheck.Run();' --json
-unity command eval --code 'DefaultActionPlaybackCheck.RunDemo();' --json
+unity command eval --code 'TestTimelineActionPlayback.Run();' --json
+unity command eval --code 'TestScenes.RunDemoEffects();' --json
 ```
 
 2つ目のコマンドは検証を開始した時点で戻ります。全曲の検証完了は、Play Modeの終了と結果ファイルで確認します。

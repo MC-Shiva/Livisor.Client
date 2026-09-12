@@ -324,10 +324,12 @@ MessagePackのキーは0〜3。`TimelineAction`の形式はDemoSceneの事前定
 
 | メニュー | 確認する内容 |
 |---|---|
-| `Livisor/Smoke Test` | `Assets/Scenes/Sandbox.unity` の `TimelineReceiver` が再生・予約・音量を受けて反映する |
-| `Livisor/Smoke Test (Admin)` | 管理者画面のボタンが送信し、応答で表示が変わる |
-| `Livisor/Smoke Test (Admin, all features)` | 管理者画面の全機能と、別接続の観客クライアントへの配信 |
-| `Livisor/Smoke Test (LiveScene scheduled effects)` | Admin → Server → LiveSceneで紙吹雪の開始・停止、雷、銀テープ、予約の重複・取消・一時停止、音量を確認 |
+| `Livisor/Tests/Timeline` | `Assets/Scenes/Sandbox.unity` の `TimelineReceiver` が再生・予約・音量を受けて反映する |
+| `Livisor/Tests/Admin` | 管理者画面のボタンが送信し、応答で表示が変わる |
+| `Livisor/Tests/Admin (all features)` | 管理者画面の全機能と、別接続の観客クライアントへの配信 |
+| `Livisor/Tests/Live Effects` | Admin → Server → LiveSceneで紙吹雪の開始・停止、雷、銀テープ、予約の重複・取消・一時停止、音量を確認 |
+
+起動メニューは`Assets/Tests/Editor/TestScenes.cs`、Play Mode中の検証処理は`Assets/Tests/Runtime/Test*Driver.cs`に置く。
 
 LiveSceneのテストは`http://127.0.0.1:5210`のローカルサーバーを使い、約1分半で終了する。
 接続先とroomをテスト中だけ変更し、デバイス通信を止める。シーンや設定アセットは保存しない。

@@ -14,7 +14,7 @@ using UnityEngine;
 /// 演出の順序・時刻、実際の粒子と雷の再生、一時停止、銀テープの再射出を検証する。
 /// 結果は Logs/demo-effects-check.json。バッチ実行では終了コードにもなる。
 /// </summary>
-public class SmokeTestDemoDefaultsDriver : MonoBehaviour
+public class TestDemoEffectsDriver : MonoBehaviour
 {
     private const string EffectPrefix = "[Effect] ";
     private readonly List<string> _effects = new();

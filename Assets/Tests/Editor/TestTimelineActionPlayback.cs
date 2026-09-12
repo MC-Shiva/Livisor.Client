@@ -2,31 +2,20 @@ using System.Collections.Generic;
 using Livisor.Shared.Common;
 using Livisor.Shared.DTO;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 
 /// <summary>
-/// デフォルト演出の発火計算（DefaultActionPlayback）と Shared の定義（DefaultActionSet）の自己検査。
+/// メモリ上の一覧を再生する TimelineActionPlayback と Shared の定義（DefaultActionSet）のテスト。
 /// 音源もシーンも使わないので、バッチ実行できる。
-/// バッチ実行: unity run . --timeout 300 -- -nographics -executeMethod DefaultActionPlaybackCheck.Run -logFile Logs/default-actions-check.log
-/// エディタ上: メニュー Livisor / Default Actions Check
+/// バッチ実行: unity run . --timeout 300 -- -nographics -executeMethod TestTimelineActionPlayback.Run -logFile Logs/default-actions-check.log
+/// エディタ上: メニュー Livisor / Tests / Timeline Action Playback
 /// 失敗した項目は Console にエラーで出る。バッチでは終了コード 1 になる。
 /// </summary>
-public static class DefaultActionPlaybackCheck
+public static class TestTimelineActionPlayback
 {
     private static readonly List<string> Failures = new();
 
-    [MenuItem("Livisor/Demo Effects Check")]
-    public static void RunDemo()
-    {
-        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
-            return;
-        EditorSceneManager.OpenScene("Assets/Scenes/DemoScene.unity");
-        new GameObject("SmokeTestDemoDefaultsDriver").AddComponent<SmokeTestDemoDefaultsDriver>();
-        EditorApplication.EnterPlaymode();
-    }
-
-    [MenuItem("Livisor/Default Actions Check")]
+    [MenuItem("Livisor/Tests/Timeline Action Playback")]
     public static void Run()
     {
         Failures.Clear();
@@ -35,7 +24,7 @@ public static class DefaultActionPlaybackCheck
         void Fire(TimelineAction a) => fired.Add(a.Value.Text);
         TimelineAction Effect(string time, string name) => new() { Time = time, Action = ActionType.Effect, Value = name };
 
-        var playback = new DefaultActionPlayback();
+        var playback = new TimelineActionPlayback();
         playback.Load(new[] { Effect("00:00:10:00", "b"), Effect("00:00:05:00", "a"), Effect("bad", "x") });
         Check(playback.Count == 2, "不正な時刻の行は捨てる");
 
@@ -62,7 +51,7 @@ public static class DefaultActionPlaybackCheck
         playback.Load(null);
         Check(playback.Count == 0, "null の定義は空として扱う");
 
-        var defaults = new DefaultActionPlayback();
+        var defaults = new TimelineActionPlayback();
         var defined = DefaultActionSet.Create();
         defaults.Load(defined);
         Check(defaults.Count == defined.Length && defined.Length > 0, "Shared のデフォルト演出はすべて HH:mm:ss:ff で読める");
@@ -73,9 +62,9 @@ public static class DefaultActionPlaybackCheck
             Check(ActionValueKindMap.KindOf(a.Action) == a.Value.Kind, $"管理画面の値種別と一致する: {a.Action}");
 
         if (Failures.Count == 0)
-            Debug.Log("[DefaultActionPlaybackCheck] PASS");
+            Debug.Log("[TestTimelineActionPlayback] PASS");
         else
-            Debug.LogError($"[DefaultActionPlaybackCheck] FAIL ({Failures.Count})\n{string.Join("\n", Failures)}");
+            Debug.LogError($"[TestTimelineActionPlayback] FAIL ({Failures.Count})\n{string.Join("\n", Failures)}");
 
         if (Application.isBatchMode)
             EditorApplication.Exit(Failures.Count == 0 ? 0 : 1);

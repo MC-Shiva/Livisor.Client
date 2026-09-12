@@ -12,9 +12,9 @@ using UnityEngine.UIElements;
 /// Admin → ローカルサーバー → LiveScene の演出予約を確認する。
 /// 紙吹雪の停止・開始、雷、銀テープ、重複通知、取消、一時停止を検査する。
 /// Demo の事前定義が Live で発火しないことも 60 秒地点まで確認する。
-/// 起動は SmokeTest.RunLiveEffects。結果は Logs/live-effects-check.json。
+/// 起動は TestScenes.RunLiveEffects。結果は Logs/live-effects-check.json。
 /// </summary>
-public class SmokeTestLiveEffectsDriver : MonoBehaviour
+public class TestLiveEffectsDriver : MonoBehaviour
 {
     readonly List<string> _effects = new();
     readonly List<double> _times = new();

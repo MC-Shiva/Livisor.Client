@@ -14,7 +14,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 // Drives the real UI and LiveScene. This test actuates the physical device.
-public sealed class SmokeTestLiveDeviceDriver : MonoBehaviour
+public sealed class TestLiveDeviceDriver : MonoBehaviour
 {
     [Serializable]
     public sealed class Report

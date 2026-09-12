@@ -3,6 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// <see cref="ActionType.Effect"/> の演出名（<see cref="EffectNames"/>）をシーンの演出に対応づけて実行する。
+/// DemoSceneController と TimelineReceiver が共用する。時刻の管理や通信は呼び出し側が行う。
 /// 演出を増やすときは EffectNames に定数を足し、ここに case を足す。サーバーの変更は要らない。
 /// 知らない名前は警告して無視する。
 /// </summary>
@@ -74,7 +75,7 @@ public sealed class EffectDispatcher
         if (_lightning != null)
             return _lightning;
 
-        var go = new GameObject("Lightning (default action)");
+        var go = new GameObject("Lightning (timeline effect)");
         var placement = _director.audiencePenlightPlacement;
         go.transform.position = placement != null ? placement.position : Vector3.zero;
         _lightning = go.AddComponent<LightningVfxController>();

@@ -13,7 +13,7 @@ using UnityEngine.UIElements;
 /// の 3 つを突き合わせる。観測役は管理者画面とは別の RoomClient で、サーバーが配信した TransportState と
 /// 状態の差分をそのまま記録する。これで「送った情報が正しいか」を画面の外から確かめる。
 /// </summary>
-public class SmokeTestAdminFullDriver : MonoBehaviour
+public class TestAdminFullDriver : MonoBehaviour
 {
     private readonly List<string> _receiverLogs = new();
     private readonly List<string> _checks = new();   // "OK: ..." / "NG: ..."

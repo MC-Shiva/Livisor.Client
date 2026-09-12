@@ -4,18 +4,15 @@ using Livisor.Shared.Common;
 using Livisor.Shared.DTO;
 
 /// <summary>
-/// デフォルト演出（Issue #22）の発火計算。UnityEngine 非依存。
-/// 音楽の再生位置（秒）を渡すと、相対時間に達したアクションを時刻順に一度ずつ返す。
-///
-/// 基準はサーバー時刻ではなく音源の再生位置。「曲の開始から何秒後」に忠実で、
-/// 一時停止中は再生位置が進まないので発火も止まり、再開すれば続きから発火する。
-/// Admin の予約は TimelineReceiver が別に扱い、こちらとは独立。
-/// DemoScene は Shared の定義を直接読む。
+/// TimelineAction の一覧をメモリに保持し、曲の再生位置に達したものを一度ずつ実行する。
+/// Load で一覧を読み込み、Advance に再生位置（秒）と実行処理を渡す。
+/// データの取得元は呼び出し側が決める。UnityEngine や Shared の事前定義には依存しない。
+/// DemoSceneController は Shared の定義を渡し、Admin の予約は TimelineReceiver が別に扱う。
 ///
 /// 再生位置は進む一方である前提（シークも曲の再スタートも現状の操作には無い）。
 /// 位置が戻っても発火し直さない。曲を再スタートするときは、このクラスのインスタンスを作り直す。
 /// </summary>
-public sealed class DefaultActionPlayback
+public sealed class TimelineActionPlayback
 {
     private readonly List<(double seconds, TimelineAction action)> _actions = new();
     private int _cursor;
@@ -24,8 +21,8 @@ public sealed class DefaultActionPlayback
     public int Count => _actions.Count;
 
     /// <summary>
-    /// 定義を読み込む。時刻の昇順に並べ替え、不正な時刻の行は捨てる。null は空として扱う。
-    /// 同じ定義を読み直しても発火済みをやり直さないよう、
+    /// 一覧をメモリに読み込み、時刻順に並べる。不正な時刻の行は捨てる。null は空として扱う。
+    /// 一覧を読み直しても発火済みをやり直さないよう、
     /// 現在の再生位置以前のアクションは飛ばす。
     /// </summary>
     public void Load(IEnumerable<TimelineAction> actions)
