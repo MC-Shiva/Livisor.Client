@@ -1,0 +1,87 @@
+name: project-status-on-merge-issues-done
+
+on:
+  pull_request:
+    types: [closed]
+
+# ▼▼▼ 環境に合わせて変更してください ▼▼▼
+env:
+  # Organization 名 (https://github.com/orgs/<PROJECT_OWNER>/projects/<PROJECT_NUMBER>)
+  PROJECT_OWNER: MC-Shiva
+  # Projects (v2) の番号。プロジェクトの URL 末尾の数字
+  PROJECT_NUMBER: "1"
+  # Status フィールドの選択肢名。プロジェクト側の表記と完全一致させること
+  TARGET_STATUS: Done
+# ▲▲▲ 変更ここまで ▲▲▲
+
+permissions:
+  contents: read
+
+jobs:
+  issues-to-done:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate token
+        id: generate-token
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            // PR のブランチ名に含まれる最初の数字を Issue 番号とみなす (例: feat/12-add-login -> 12)
+            const headRef = context.payload.pull_request.head?.ref || "";
+            const m = headRef.match(/(\d+)/);
+            if (!m) return core.info(`no issue number in branch '${headRef}'`);
+            const issueNumber = parseInt(m[1],10);
+
+            const org = process.env.PROJECT_OWNER;
+            const projectNumber = Number(process.env.PROJECT_NUMBER);
+            const statusName = process.env.TARGET_STATUS;
+            const gql = (q,v)=>github.graphql(q,v);
+
+            const proj = await gql(`
+              query($org:String!,$number:Int!){
+                organization(login:$org){
+                  projectV2(number:$number){
+                    id
+                    fields(first:50){ nodes{
+                      ... on ProjectV2SingleSelectField{ id name options{ id name } }
+                    }}
+                  }
+                }
+              }`,{org,number:projectNumber});
+            const project = proj.organization?.projectV2;
+            if(!project) return core.setFailed(`project ${org}/${projectNumber} not found`);
+            const statusField = project.fields.nodes.find(f=>f?.name==="Status");
+            const statusOpt = statusField?.options.find(o=>o.name===statusName);
+            if(!statusField || !statusOpt) return core.setFailed(`status '${statusName}' not found`);
+
+            const iq = await gql(`
+              query($owner:String!,$repo:String!,$num:Int!){
+                repository(owner:$owner,name:$repo){ issue(number:$num){ id } }
+              }`,{owner,repo,num:issueNumber});
+            const issueId = iq.repository?.issue?.id;
+            if(!issueId) return core.info(`issue #${issueNumber} not found`);
+
+            const add = await gql(`
+              mutation($projectId:ID!,$contentId:ID!){
+                addProjectV2ItemById(input:{projectId:$projectId,contentId:$contentId}){ item{ id } }
+              }`,{projectId:project.id,contentId:issueId});
+            const itemId = add.addProjectV2ItemById.item.id;
+
+            await gql(`
+              mutation($projectId:ID!,$itemId:ID!,$fieldId:ID!,$optionId:String!){
+                updateProjectV2ItemFieldValue(input:{
+                  projectId:$projectId,itemId:$itemId,fieldId:$fieldId,
+                  value:{ singleSelectOptionId:$optionId }
+                }){ projectV2Item{ id } }
+              }`,{projectId:project.id,itemId,fieldId:statusField.id,optionId:statusOpt.id});
+
+            core.info(`issue #${issueNumber} -> ${statusName}`);

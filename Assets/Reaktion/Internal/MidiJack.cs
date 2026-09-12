@@ -351,11 +351,11 @@ public class MidiJack : MonoBehaviour
         get {
             if (_instance == null)
             {
-                var previous = FindObjectOfType (typeof(MidiJack));
+                var previous = FindFirstObjectByType<MidiJack> ();
                 if (previous)
                 {
                     Debug.LogWarning ("Initialized twice. Don't use MidiInput in the scene hierarchy.");
-                    _instance = (MidiJack)previous;
+                    _instance = previous;
                 }
                 else
                 {

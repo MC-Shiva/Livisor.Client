@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Visualizer
-  m_Shader: {fileID: 4800000, guid: 0c970e28e6d6d49d2851508602013745, type: 3}
+  m_Shader: {fileID: 4800000, guid: c4279f4b82d84cf390cce186dd72fe62, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -28,10 +28,13 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Floats:
+    - _AudioResponse: 1
+    - _EmissionClamp: 3
     - _EmissionStrength: 10
-    - _GridEmission: 4.5
+    - _GridEmission: 1.2
     - _ReflectionStrength: 0.05
-    - _RingEmission: 10
+    - _RingBaseEmission: 0.5
+    - _RingEmission: 2.5
     - _RingSpeedMax: 0.5
     - _RingSpeedMin: 0.2
     - _RingSrtide: 0.2

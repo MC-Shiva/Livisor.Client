@@ -9,8 +9,8 @@
     }
   ],
   "dependencies": {
-    "com.livisor.shared.unity": "file:../../Livisor.Shared",
     "com.cysharp.magiconion.client.unity": "https://github.com/Cysharp/MagicOnion.git?path=src/MagicOnion.Client.Unity/Assets/Scripts/MagicOnion.Client.Unity#7.0.2",
+    "com.cysharp.slnmerge": "https://github.com/Cysharp/SlnMerge.git?path=src",
     "com.cysharp.yetanotherhttphandler": "https://github.com/Cysharp/YetAnotherHttpHandler.git?path=src/YetAnotherHttpHandler#1.10.0",
     "com.github-glitchenzo.nugetforunity": "https://github.com/GlitchEnzo/NuGetForUnity.git?path=/src/NuGetForUnity",
     "com.meta.xr.sdk.core": "203.0.0",
@@ -22,7 +22,9 @@
     "com.unity.ide.visualstudio": "2.0.26",
     "com.unity.ide.vscode": "1.2.4",
     "com.unity.multiplayer.center": "1.0.1",
+    "com.unity.render-pipelines.universal": "17.3.0",
     "com.unity.ugui": "2.0.0",
+    "com.unity.visualeffectgraph": "17.3.0",
     "com.unity.xr.management": "4.7.0",
     "com.unity.xr.openxr": "1.18.0-pre.2",
     "com.unity.modules.accessibility": "1.0.0",
@@ -58,6 +60,7 @@
     "com.unity.modules.video": "1.0.0",
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
-    "com.unity.modules.xr": "1.0.0"
+    "com.unity.modules.xr": "1.0.0",
+    "com.unity.pipeline": "0.6.0-exp.1"
   }
 }

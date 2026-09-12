@@ -101,7 +101,7 @@ public class GenericLink<T> : GenericLinkBase where T : Component
             r = master.GetComponentInChildren<T>();
             if (r) return r;
 
-            return Object.FindObjectOfType<T>();
+            return Object.FindFirstObjectByType<T>();
         }
 
         if (_mode == Mode.ByReference) return _reference;
