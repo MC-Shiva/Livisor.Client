@@ -12,6 +12,7 @@ public static class ActionValueKindMap
     {
         ActionType.Play => ActionValueKind.Bool,
         ActionType.VolumeChange => ActionValueKind.Number,
+        ActionType.Effect => ActionValueKind.Text,   // 演出名（EffectNames）
         _ => ActionValueKind.Number,
     };
 }

@@ -33,11 +33,11 @@ public interface IRoomClient : IAsyncDisposable
     /// <summary>再生を停止する。予約は残る。</summary>
     Task<TransportState> StopAsync();
 
-    /// <summary>予約を 1 件登録する。<c>action.Time</c> は再生開始からの相対時間。既存の予約は置き換わる。</summary>
-    Task<TransportState> ScheduleActionAsync(TimelineAction action);
+    /// <summary>一覧をキューに追加する。Time は曲の先頭からの位置。</summary>
+    Task<TransportState> ScheduleActionsAsync(params TimelineAction[] actions);
 
-    /// <summary>予約を取り消す。</summary>
-    Task<TransportState> CancelScheduledActionAsync();
+    /// <summary>追加予約をすべて取り消す。デフォルト演出は残す。</summary>
+    Task<TransportState> CancelScheduledActionsAsync();
 
     /// <summary>変化した項目を同じ room の全員へ配る。自分にも <see cref="StateChanged"/> で戻ってくる。</summary>
     Task PublishStateAsync(params RoomStateEntry[] entries);

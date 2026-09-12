@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using Livisor.Shared.Common;
 using Livisor.Shared.DTO;
@@ -7,15 +6,8 @@ using Livisor.Device;
 using UnityEngine;
 
 /// <summary>
-/// 受信側クライアント（薄い glue）。
-/// 通信は <see cref="IRoomClient"/>、発火の計算は <see cref="TimelinePlayback"/>、
-/// 実際の操作は <see cref="IMediaPlayer"/> に委譲する。
-/// サーバアドレスは <see cref="ServerConfig"/> で一元管理する。
-/// このクラスの責務は Unity ライフサイクル・メインスレッド整流・配線のみ。
-///
-/// サーバーから届くものは 2 種類ある。
-///   - トランスポート（再生中かどうか・予約 1 件）: <see cref="IRoomClient.TransportChanged"/>
-///   - 状態の差分（音量など）: <see cref="IRoomClient.StateChanged"/>
+/// Server の演出キューを TimelineActionPlayback に渡し、曲の再生位置で実行する。
+/// 受信した状態は Update でメインスレッドに反映する。
 /// </summary>
 public class TimelineReceiver : MonoBehaviour
 {
@@ -29,16 +21,22 @@ public class TimelineReceiver : MonoBehaviour
     private IRoomClient _client;
     private IMediaPlayer _player;
 
+    private EffectDispatcher _effects;
+
     // 受信は非メインスレッドで起きるため、メインスレッド（Update）で処理するためのキュー。
     private readonly ConcurrentQueue<TransportState> _pendingTransports = new();
     private readonly ConcurrentQueue<RoomStatePatch> _pendingStates = new();
 
-    // 予約の発火待ち。トランスポートが変わるたびに張り直す（古い予約が二重に発火しないように）。
-    private Coroutine _pendingAction;
+    private readonly TimelineActionPlayback _playback = new();
+    private bool _playing;
+    private double _receivedPosition;
+    private double _receivedAt;
 
     async void Start()
     {
         _player = CreateMediaPlayer();
+        if (_stageDirector != null)
+            _effects = new EffectDispatcher(_stageDirector);
 
         _client = new RoomClient();
         _client.TransportChanged += OnTransportChanged;
@@ -79,6 +77,10 @@ public class TimelineReceiver : MonoBehaviour
 
         while (_pendingTransports.TryDequeue(out var state))
             ApplyTransport(state);
+
+        if (_playing)
+            _playback.Advance(_stageDirector != null ? _stageDirector.MusicTimeSeconds
+                : _receivedPosition + Time.realtimeSinceStartupAsDouble - _receivedAt, Dispatch);
     }
 
     // 状態の差分を反映する。いま扱うのは音量だけ。他のキー（心拍数・照明色など）は無視する。
@@ -95,33 +97,18 @@ public class TimelineReceiver : MonoBehaviour
         }
     }
 
-    // トランスポートを反映する。再生・停止を切り替え、予約があれば発火のタイマーを張り直す。
     private void ApplyTransport(TransportState state)
     {
-        Debug.Log($"[Receiver] transport: playing={state.Playing} scheduled={(state.ScheduledAction == null ? "none" : state.ScheduledAction.Time)}");
-
-        // 停止中は基準時刻が無いので予約タイマーを取り消す。次に再生になったら張り直す（TransportState のコメント参照）。
-        if (_pendingAction != null)
-        {
-            StopCoroutine(_pendingAction);
-            _pendingAction = null;
-        }
-
+        Debug.Log($"[Receiver] transport: playing={state.Playing} actions={state.Actions.Length}");
+        _playback.Load(state.Actions);
+        _playing = state.Playing;
+        _receivedPosition = Math.Max(0, (state.ServerTimeMs - state.StartedAtServerMs) / 1000.0);
+        _receivedAt = Time.realtimeSinceStartupAsDouble;
         _player.Play(state.Playing);
         if (_device != null) _device.ApplyPlaying(state.Playing);
-
-        if (TimelinePlayback.TryGetPendingAction(state, out var delaySeconds, out var action))
-            _pendingAction = StartCoroutine(FireAfter(delaySeconds, action));
     }
 
-    private IEnumerator FireAfter(double delaySeconds, TimelineAction action)
-    {
-        // Time.timeScale に影響されないよう実時間で待つ（停止中に timeScale を 0 にする実装があるため）。
-        yield return new WaitForSecondsRealtime((float)delaySeconds);
-        _pendingAction = null;
-        Dispatch(action);
-    }
-
+    // 予約アクションを実行する。
     private async void Dispatch(TimelineAction action)
     {
         switch (action.Action)
@@ -152,6 +139,21 @@ public class TimelineReceiver : MonoBehaviour
                 {
                     Debug.LogException(e);
                 }
+                break;
+
+            case ActionType.Effect:
+                // 演出名は文字列。StageDirector が無いシーンでは実行先が無いのでログだけ出す。
+                if (action.Value.Kind != ActionValueKind.Text)
+                {
+                    Debug.LogWarning($"[Receiver] effect の値が文字列ではないため無視する (Kind={action.Value.Kind})");
+                    break;
+                }
+                if (_effects == null)
+                {
+                    Debug.Log($"[Effect] {action.Value.Text} (StageDirector が無いため実行しない)");
+                    break;
+                }
+                _effects.Fire(action.Value.Text);
                 break;
         }
     }

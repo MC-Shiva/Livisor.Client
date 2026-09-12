@@ -21,12 +21,12 @@ namespace Livisor.Shared.UnaryServices
         UnaryResult<TransportState> StopAsync(string roomId);
 
         /// <summary>
-        /// 予約アクションを 1 件登録する。既存の予約は置き換える。
-        /// <paramref name="action"/> の Time は再生開始からの相対時間として扱う。
+        /// アクション一覧を既存のキューに追加する。全件を検証してから登録する。
+        /// <paramref name="actions"/> の Time は曲の先頭からの位置として扱う。
         /// </summary>
-        UnaryResult<TransportState> ScheduleActionAsync(string roomId, TimelineAction action);
+        UnaryResult<TransportState> ScheduleActionsAsync(string roomId, TimelineAction[] actions);
 
-        /// <summary>予約アクションを取り消す。</summary>
-        UnaryResult<TransportState> CancelScheduledActionAsync(string roomId);
+        /// <summary>追加予約をすべて取り消す。デフォルト演出は残す。</summary>
+        UnaryResult<TransportState> CancelScheduledActionsAsync(string roomId);
     }
 }

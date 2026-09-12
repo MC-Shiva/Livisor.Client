@@ -7,5 +7,6 @@ namespace Livisor.Shared.Common
     {
         Play,           // "play"（true=再生 / false=停止）
         VolumeChange,   // "volumeChange"
+        Effect,         // "effect"（値は演出名の文字列。既知の名前は EffectNames）
     }
 }

@@ -42,11 +42,11 @@ public class RoomClient : IRoomClient, IRoomStateHubReceiver
 
     public async Task<TransportState> StopAsync() => await _timeline.StopAsync(_roomId);
 
-    public async Task<TransportState> ScheduleActionAsync(TimelineAction action)
-        => await _timeline.ScheduleActionAsync(_roomId, action);
+    public async Task<TransportState> ScheduleActionsAsync(params TimelineAction[] actions)
+        => await _timeline.ScheduleActionsAsync(_roomId, actions);
 
-    public async Task<TransportState> CancelScheduledActionAsync()
-        => await _timeline.CancelScheduledActionAsync(_roomId);
+    public async Task<TransportState> CancelScheduledActionsAsync()
+        => await _timeline.CancelScheduledActionsAsync(_roomId);
 
     public async Task PublishStateAsync(params RoomStateEntry[] entries)
         => await _hub.PublishAsync(entries);

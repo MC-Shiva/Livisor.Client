@@ -11,7 +11,7 @@ using UnityEngine.UIElements;
 /// 操作の順: 接続 → PLAY → VOLUME 42 → 先頭行を「00:00:01:00 volumeChange 30」にして SCHEDULE → 停止。
 /// 合格: 受信側が transport を 3 回以上受け取り、音量 42 と予約の音量 30 が反映されること。
 /// </summary>
-public class SmokeTestAdminDriver : MonoBehaviour
+public class TestAdminDriver : MonoBehaviour
 {
     private readonly List<string> _receiverLogs = new();
     private readonly List<string> _steps = new();

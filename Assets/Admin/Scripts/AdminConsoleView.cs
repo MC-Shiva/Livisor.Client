@@ -16,7 +16,7 @@ using UnityEngine.UIElements;
 /// 通信の内訳（サーバー側の契約に合わせている）:
 ///   - 再生 / 停止 / 予約 / 予約取消 … 一度きりの操作。Unary の ITimelineService
 ///   - 音量 … 変わり続ける値。StreamingHub の IRoomStateHub に publish する
-/// 予約は 1 件だけ持てる。タイムライン一覧の先頭行を「再生開始からの相対時間」として送る。
+/// タイムライン一覧の全行を追加予約として送る。時刻は曲の先頭からの位置を表す。
 /// </summary>
 [RequireComponent(typeof(UIDocument))]
 public class AdminConsoleView : MonoBehaviour
@@ -229,13 +229,9 @@ public class AdminConsoleView : MonoBehaviour
 
     private void OnStopClicked() => _ = RunAsync("停止", () => _client.StopAsync());
 
-    private void OnCancelScheduleClicked() => _ = RunAsync("予約取消", () => _client.CancelScheduledActionAsync());
+    private void OnCancelScheduleClicked() => _ = RunAsync("予約取消", () => _client.CancelScheduledActionsAsync());
 
-    /// <summary>
-    /// タイムライン一覧の先頭行を予約として送る。<see cref="TimelineDraft.TryBuild"/> で検証・変換したうえで、
-    /// 時刻の昇順で最初の 1 件だけを使う（サーバーの予約は 1 件だけ）。
-    /// 行の時刻は「再生開始からの相対時間」として扱われる。
-    /// </summary>
+    /// <summary>入力行を全件検証し、Server のキューへまとめて追加する。</summary>
     private void OnScheduleClicked()
     {
         if (!TimelineDraft.TryBuild(_rows, out var actions, out var error))
@@ -244,12 +240,7 @@ public class AdminConsoleView : MonoBehaviour
             return;
         }
 
-        // 予約は 1 件だけなので、時刻順で最初の行だけを送る。他の行があることは送信結果の文言に含める
-        // （送信中の文言で上書きされて読めなくならないように、別メッセージにはしない）。
-        var label = actions.Length > 1
-            ? $"予約 {actions[0].Time}（他 {actions.Length - 1} 件は送りません）"
-            : $"予約 {actions[0].Time}";
-        _ = RunAsync(label, () => _client.ScheduleActionAsync(actions[0]));
+        _ = RunAsync($"予約 {actions.Length} 件の追加", () => _client.ScheduleActionsAsync(actions));
     }
 
     /// <summary>音量を状態同期に publish する。同じ room の全員に届き、自分にも戻ってくる。</summary>
@@ -318,10 +309,7 @@ public class AdminConsoleView : MonoBehaviour
 
     private void ShowTransport(TransportState state)
     {
-        var scheduled = state.ScheduledAction == null
-            ? "予約なし"
-            : $"予約 {state.ScheduledAction.Time} {state.ScheduledAction.Action}={state.ScheduledAction.Value}";
-        _transportLabel.text = $"{(state.Playing ? "再生中" : "停止中")} / {scheduled}";
+        _transportLabel.text = $"{(state.Playing ? "再生中" : "停止中")} / キュー {state.Actions.Length} 件";
     }
 
     private void ShowState(RoomStatePatch patch)

@@ -6,12 +6,18 @@ Livisor for Client
 
 通信なしのデモScene: `Assets/Scenes/DemoScene.unity`
 
+観客ClientとAdminの接続、予約の形式、現在の対応範囲は
+[サーバーとの通信](Docs/server-communication.md)を参照してください。
+
 ## DemoSceneでライブ演出を確認
 
 `DemoScene` はサーバー、Admin Scene、ラズパイへ接続せず、ライブの見た目と音楽を確認するためのSceneです。
 Play Modeを開始すると自動再生し、Gameビューで **S** を押すと再開、**P** を押すと一時停止します。
 音楽は本番と同じAnimation Eventによって演出開始の約2秒後に再生されます。
 DemoSceneは本番のBuild Settingsには含めません。
+
+紙吹雪・雷・銀テープはSharedの事前定義から自動再生します。
+演出の形式、編集手順、検証方法は[DemoSceneのデフォルト演出](Docs/demo-effects.md)を参照してください。
 
 再生中にGameビューで **C** を押すと、観客席とUnitychan目線を切り替えます。
 Unitychan目線では目の位置に追従して客席を見渡せます。

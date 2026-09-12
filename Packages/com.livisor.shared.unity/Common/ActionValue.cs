@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 
 namespace Livisor.Shared.Common
@@ -58,7 +60,7 @@ namespace Livisor.Shared.Common
             && Bool == other.Bool
             && Text == other.Text;
 
-        public override bool Equals(object obj) => obj is ActionValue other && Equals(other);
+        public override bool Equals(object? obj) => obj is ActionValue other && Equals(other);
 
         public override int GetHashCode() => HashCode.Combine(Kind, Number, Bool, Text);
     }

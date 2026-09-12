@@ -12,7 +12,7 @@ using UnityEngine;
 /// 再生 → 予約 → 音量 → 停止 の順に送る。受信側のログと自分に届いた通知を数えて合否を出す。
 /// 合格: 受信側が transport を 3 回以上受け取り、即時の音量 42 と予約の音量 30 が反映され、管理者役にも 42 が届くこと。
 /// </summary>
-public class SmokeTestDriver : MonoBehaviour
+public class TestTimelineDriver : MonoBehaviour
 {
     private const string RoomId = "room1";
     private readonly List<string> _receiverLogs = new();
@@ -85,7 +85,7 @@ public class SmokeTestDriver : MonoBehaviour
         Debug.Log("[Smoke] admin connected");
 
         await admin.PlayAsync();
-        await admin.ScheduleActionAsync(new TimelineAction { Time = "00:00:01:00", Action = ActionType.VolumeChange, Value = 30 });
+        await admin.ScheduleActionsAsync(new TimelineAction { Time = "00:00:01:00", Action = ActionType.VolumeChange, Value = 30 });
         await admin.PublishStateAsync(new RoomStateEntry { Key = RoomStateKeys.Volume, Value = ActionValue.From(42) });
         await Task.Delay(2500); // 予約（1 秒後の音量 30）が受信側で発火するのを待つ
         await admin.StopAsync();

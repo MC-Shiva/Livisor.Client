@@ -13,7 +13,7 @@ using UnityEngine.UIElements;
 /// の 3 つを突き合わせる。観測役は管理者画面とは別の RoomClient で、サーバーが配信した TransportState と
 /// 状態の差分をそのまま記録する。これで「送った情報が正しいか」を画面の外から確かめる。
 /// </summary>
-public class SmokeTestAdminFullDriver : MonoBehaviour
+public class TestAdminFullDriver : MonoBehaviour
 {
     private readonly List<string> _receiverLogs = new();
     private readonly List<string> _checks = new();   // "OK: ..." / "NG: ..."
@@ -92,7 +92,7 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         Click(root, "play-button");
         yield return WaitUntil(() => _transports.Count > n0, 5f);
         var t1 = _transports.LastOrDefault();
-        Check(t1 != null && t1.Playing && t1.ScheduledAction == null && t1.StartedAtServerMs > 0, "PLAY: 観測役に playing=true・予約なし・開始時刻ありが届く");
+        Check(t1 != null && t1.Playing && t1.Actions.Length == DefaultTimeline.Create().Length && t1.StartedAtServerMs > 0, "PLAY: 観測役に playing=true・デフォルト演出・開始時刻ありが届く");
         yield return WaitSent(root);
         Check(root.Q<Label>("transport-status").text.StartsWith("再生中"), "PLAY: 画面が『再生中』になる");
         Check(ReceiverCount("[Play] PLAY") >= 1, "PLAY: 受信側が再生する");
@@ -121,7 +121,7 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         Check(root.Q<Label>("volume-status").text.Contains("42"), "音量 42: 画面に『音量 42』が出る");
         Check(ReceiverCount("VOLUME -> 42") >= 1, "音量 42: 受信側の音量が変わる");
 
-        // 7. 予約: 先頭行 00:00:01:00 volumeChange 30、2 行目 00:00:05:00 play=false → 先頭だけ送られる
+        // 7. 予約: 00:00:01:00 volumeChange 30 と 00:00:05:00 play=false をまとめて追加する
         var list = root.Q<ListView>("timeline-list");
         var row0 = list.GetRootElementForIndex(0);
         Check(row0 != null, "タイムラインの先頭行がある");
@@ -149,14 +149,14 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         yield return WaitUntil(() => _transports.Count > n2, 5f);
         var t3 = _transports.LastOrDefault();
         yield return WaitSent(root);
-        Check(t3 != null && t3.ScheduledAction != null && t3.ScheduledAction.Time == "00:00:01:00"
-              && t3.ScheduledAction.Action == ActionType.VolumeChange && t3.ScheduledAction.Value.Number == 30,
-              "SCHEDULE: 観測役に予約 00:00:01:00 volumeChange=30 が届く（先頭行の内容）");
-        yield return new WaitForSecondsRealtime(0.3f);
-        Check(row1 == null || root.Q<Label>("status-label").text.Contains("他 1 件"), "SCHEDULE: 2 行あるときは『他 1 件は送りません』と出る");
-        Check(root.Q<Label>("transport-status").text.Contains("予約 00:00:01:00"), "SCHEDULE: 画面に予約が出る");
+        Check(t3 != null && t3.Actions.Length == DefaultTimeline.Create().Length + 2
+              && t3.Actions.Any(a => a.Time == "00:00:01:00" && a.Action == ActionType.VolumeChange && a.Value.Number == 30)
+              && t3.Actions.Any(a => a.Time == "00:00:05:00" && a.Action == ActionType.Play && !a.Value.Bool),
+              "SCHEDULE: デフォルト演出と入力した2行が届く");
+        Check(root.Q<Label>("status-label").text.Contains("2 件の追加"), "SCHEDULE: 送信した件数が出る");
+        Check(root.Q<Label>("transport-status").text.Contains($"キュー {DefaultTimeline.Create().Length + 2} 件"), "SCHEDULE: 画面にキュー件数が出る");
         yield return WaitUntil(() => ReceiverCount("VOLUME -> 30") > fired30, 4f);
-        Check(ReceiverCount("VOLUME -> 30") > fired30, "SCHEDULE: 受信側で約 1 秒後に音量 30 が発火する");
+        Check(ReceiverCount("VOLUME -> 30") > fired30, "SCHEDULE: 過去時刻の予約で音量 30 が発火する");
         yield return WaitUntil(() => _volumes.Count > v1, 3f);
         Check(_volumes.LastOrDefault() == 30, "発火した音量 30 が状態同期に書き戻され、観測役に届く");
 
@@ -166,8 +166,8 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         yield return WaitUntil(() => _transports.Count > n3, 5f);
         var t4 = _transports.LastOrDefault();
         yield return WaitSent(root);
-        Check(t4 != null && t4.ScheduledAction == null && t4.Playing, "CANCEL: 予約だけ消え、再生は続く");
-        Check(root.Q<Label>("transport-status").text.Contains("予約なし"), "CANCEL: 画面が『予約なし』になる");
+        Check(t4 != null && t4.Actions.Length == DefaultTimeline.Create().Length && t4.Playing, "CANCEL: 追加予約だけ消え、デフォルト演出と再生は残る");
+        Check(root.Q<Label>("transport-status").text.Contains($"キュー {DefaultTimeline.Create().Length} 件"), "CANCEL: デフォルト演出の件数が表示される");
 
         // 9. SCHEDULE → STOP: 停止しても予約は残る
         var n4 = _transports.Count;
@@ -179,19 +179,19 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
         yield return WaitUntil(() => _transports.Count > n5, 5f);
         var t5 = _transports.LastOrDefault();
         yield return WaitSent(root);
-        Check(t5 != null && !t5.Playing && t5.ScheduledAction != null && t5.StartedAtServerMs == 0, "STOP: playing=false・開始時刻 0・予約は残る");
-        Check(root.Q<Label>("transport-status").text.StartsWith("停止中") && root.Q<Label>("transport-status").text.Contains("予約 00:00:01:00"), "STOP: 画面が『停止中 / 予約あり』になる");
+        Check(t5 != null && !t5.Playing && t5.Actions.Length == DefaultTimeline.Create().Length + 2 && t5.StartedAtServerMs == 0, "STOP: playing=false・開始時刻 0・予約は残る");
+        Check(root.Q<Label>("transport-status").text.StartsWith("停止中") && root.Q<Label>("transport-status").text.Contains($"キュー {DefaultTimeline.Create().Length + 2} 件"), "STOP: 画面が『停止中 / 予約あり』になる");
         Check(ReceiverCount("[Play] STOP") >= 2, "STOP: 受信側が停止する");
 
-        // 10. 再度 PLAY → 残っていた予約が新しい開始時刻から再び発火する
+        // 10. 再度 PLAY → 実行済みの予約は繰り返さない
         var fired30b = ReceiverCount("VOLUME -> 30"); var n6 = _transports.Count;
         Click(root, "play-button");
         yield return WaitUntil(() => _transports.Count > n6, 5f);
         var t6 = _transports.LastOrDefault();
         yield return WaitSent(root);
-        Check(t6 != null && t6.Playing && t1 != null && t6.StartedAtServerMs > t1.StartedAtServerMs && t6.ScheduledAction != null, "再 PLAY: 新しい開始時刻になり予約は残る");
-        yield return WaitUntil(() => ReceiverCount("VOLUME -> 30") > fired30b, 4f);
-        Check(ReceiverCount("VOLUME -> 30") > fired30b, "再 PLAY: 予約が再び発火する");
+        Check(t6 != null && t6.Playing && t1 != null && t6.StartedAtServerMs > t1.StartedAtServerMs && t6.Actions.Length == DefaultTimeline.Create().Length + 2, "再 PLAY: 新しい開始時刻になり予約は残る");
+        yield return new WaitForSecondsRealtime(2f);
+        Check(ReceiverCount("VOLUME -> 30") == fired30b, "再 PLAY: 実行済みの予約は繰り返さない");
 
         // 11. STOP → DISCONNECT
         Click(root, "stop-button");
@@ -215,7 +215,7 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
     {
         try
         {
-            await _observer.CancelScheduledActionAsync();
+            await _observer.CancelScheduledActionsAsync();
             await _observer.StopAsync();
         }
         catch (System.Exception e) { Debug.LogWarning("[SmokeAdminFull] reset failed: " + e.Message); }
@@ -231,7 +231,7 @@ public class SmokeTestAdminFullDriver : MonoBehaviour
             $"  \"ok\": {(ok ? "true" : "false")},\n" +
             $"  \"fatal\": {(fatal == null ? "null" : "\"" + fatal.Replace("\"", "'") + "\"")},\n" +
             $"  \"checks\": [\n    {string.Join(",\n    ", _checks.Select(c => "\"" + c.Replace("\"", "'") + "\""))}\n  ],\n" +
-            $"  \"observerTransports\": [{string.Join(", ", _transports.Select(t => $"\"playing={t.Playing} startedAt={t.StartedAtServerMs} scheduled={(t.ScheduledAction == null ? "none" : t.ScheduledAction.Time + " " + t.ScheduledAction.Action + "=" + t.ScheduledAction.Value)}\""))}],\n" +
+            $"  \"observerTransports\": [{string.Join(", ", _transports.Select(t => $"\"playing={t.Playing} startedAt={t.StartedAtServerMs} actions={t.Actions.Length}\""))}],\n" +
             $"  \"observerVolumes\": [{string.Join(", ", _volumes)}],\n" +
             $"  \"receiverLogs\": [{string.Join(", ", _receiverLogs.Select(l => "\"" + l.Replace("\"", "'") + "\""))}]\n" +
             "}\n";
