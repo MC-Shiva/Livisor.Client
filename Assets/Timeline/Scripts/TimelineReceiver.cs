@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using Livisor.Shared.Common;
 using Livisor.Shared.DTO;
@@ -7,17 +6,8 @@ using Livisor.Device;
 using UnityEngine;
 
 /// <summary>
-/// 受信側クライアント（薄い glue）。
-/// 通信は <see cref="IRoomClient"/>、発火の計算は <see cref="TimelinePlayback"/>、
-/// 実際の操作は <see cref="IMediaPlayer"/> に委譲する。
-/// サーバアドレスは <see cref="ServerConfig"/> で一元管理する。
-/// このクラスの責務は Unity ライフサイクル・メインスレッド整流・配線のみ。
-///
-/// サーバーから届くものは 2 種類ある。
-///   - トランスポート（再生中かどうか・予約 1 件）: <see cref="IRoomClient.TransportChanged"/>
-///   - 状態の差分（音量など）: <see cref="IRoomClient.StateChanged"/>
-///
-/// 事前定義は DemoScene 専用。Live の受信側は Admin からの予約を扱う。
+/// Server の演出キューを TimelineActionPlayback に渡し、曲の再生位置で実行する。
+/// 受信した状態は Update でメインスレッドに反映する。
 /// </summary>
 public class TimelineReceiver : MonoBehaviour
 {
@@ -37,10 +27,10 @@ public class TimelineReceiver : MonoBehaviour
     private readonly ConcurrentQueue<TransportState> _pendingTransports = new();
     private readonly ConcurrentQueue<RoomStatePatch> _pendingStates = new();
 
-    // 予約の発火待ち。トランスポートが変わるたびに張り直す（古い予約が二重に発火しないように）。
-    private Coroutine _pendingAction;
-    private TimelineAction _scheduledAction;
-    private bool _scheduledFired;
+    private readonly TimelineActionPlayback _playback = new();
+    private bool _playing;
+    private double _receivedPosition;
+    private double _receivedAt;
 
     async void Start()
     {
@@ -87,6 +77,10 @@ public class TimelineReceiver : MonoBehaviour
 
         while (_pendingTransports.TryDequeue(out var state))
             ApplyTransport(state);
+
+        if (_playing)
+            _playback.Advance(_stageDirector != null ? _stageDirector.MusicTimeSeconds
+                : _receivedPosition + Time.realtimeSinceStartupAsDouble - _receivedAt, Dispatch);
     }
 
     // 状態の差分を反映する。いま扱うのは音量だけ。他のキー（心拍数・照明色など）は無視する。
@@ -103,57 +97,15 @@ public class TimelineReceiver : MonoBehaviour
         }
     }
 
-    // トランスポートを反映する。再生・停止を切り替え、予約があれば発火のタイマーを張り直す。
     private void ApplyTransport(TransportState state)
     {
-        Debug.Log($"[Receiver] transport: playing={state.Playing} scheduled={(state.ScheduledAction == null ? "none" : state.ScheduledAction.Time)}");
-
-        // 予約IDは持たず、時刻・種類・値が同じ再通知は実行済みとして扱う。取消で再登録できる。
-        var action = state.ScheduledAction;
-        if (action == null || _scheduledAction == null || action.Time != _scheduledAction.Time
-            || action.Action != _scheduledAction.Action || !action.Value.Equals(_scheduledAction.Value)
-            || !state.Playing)
-            _scheduledFired = false;
-        _scheduledAction = action;
-
-        // 停止中は基準時刻が無いので予約タイマーを取り消す。次に再生になったら張り直す（TransportState のコメント参照）。
-        if (_pendingAction != null)
-        {
-            StopCoroutine(_pendingAction);
-            _pendingAction = null;
-        }
-
+        Debug.Log($"[Receiver] transport: playing={state.Playing} actions={state.Actions.Length}");
+        _playback.Load(state.Actions);
+        _playing = state.Playing;
+        _receivedPosition = Math.Max(0, (state.ServerTimeMs - state.StartedAtServerMs) / 1000.0);
+        _receivedAt = Time.realtimeSinceStartupAsDouble;
         _player.Play(state.Playing);
         if (_device != null) _device.ApplyPlaying(state.Playing);
-
-        if (!state.Playing || action == null || _scheduledFired)
-            return;
-
-        if (_stageDirector != null)
-            _pendingAction = StartCoroutine(FireAtMusicTime(action));
-        else if (TimelinePlayback.TryGetPendingAction(state, out var delaySeconds, out _))
-            _pendingAction = StartCoroutine(FireAfter(delaySeconds, action));
-    }
-
-    // Live は曲の位置で待つ。開始待ち・一時停止中は MusicTimeSeconds が -1 になる。
-    private IEnumerator FireAtMusicTime(TimelineAction action)
-    {
-        if (!PlaybackTime.TryParse(action.Time, out var time))
-            yield break;
-        while (_stageDirector.MusicTimeSeconds < time.TotalSeconds)
-            yield return null;
-        _pendingAction = null;
-        _scheduledFired = true;
-        Dispatch(action);
-    }
-
-    private IEnumerator FireAfter(double delaySeconds, TimelineAction action)
-    {
-        // Time.timeScale に影響されないよう実時間で待つ（停止中に timeScale を 0 にする実装があるため）。
-        yield return new WaitForSecondsRealtime((float)delaySeconds);
-        _pendingAction = null;
-        _scheduledFired = true;
-        Dispatch(action);
     }
 
     // 予約アクションを実行する。

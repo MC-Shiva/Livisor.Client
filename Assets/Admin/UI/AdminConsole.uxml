@@ -34,7 +34,7 @@
             <ui:Label name="volume-status" text="-" class="status-label"/>
         </ui:VisualElement>
         <ui:VisualElement name="timeline-panel" class="panel timeline-panel">
-            <ui:Label text="Schedule (relative to playback start, first row only)" class="field-label"/>
+            <ui:Label text="Schedule (time from song start, append all rows)" class="field-label"/>
             <ui:VisualElement name="timeline-header" class="timeline-row timeline-header">
                 <ui:Label text="TIME (H:M:S:CS)" class="header-time"/>
                 <ui:Label text="CATEGORY" class="header-action"/>

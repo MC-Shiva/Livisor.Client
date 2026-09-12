@@ -48,8 +48,34 @@ public static class TestTimelineActionPlayback
         playback.Advance(20.0, Fire);
         Check(string.Join(",", fired) == "a,b", "再生位置が戻っても発火し直さない（戻す操作は現状無い）");
 
+        playback.Load(new[] { Effect("00:00:05:00", "a"), Effect("00:00:10:00", "b"),
+            Effect("00:00:03:00", "past"), Effect("00:00:40:00", "later") });
+        playback.Advance(30, Fire);
+        Check(string.Join(",", fired) == "a,b,past", "追加された過去時刻の予約だけをその場で実行する");
+        playback.Load(new[] { Effect("00:00:05:00", "a"), Effect("00:00:10:00", "b") });
+        playback.Advance(50, Fire);
+        Check(fired.Count == 3, "取り消された未来の予約は実行しない");
+        playback.Load(new[] { Effect("00:00:05:00", "a"), Effect("00:00:10:00", "b"), Effect("00:00:03:00", "past") });
+        playback.Advance(50, Fire);
+        Check(string.Join(",", fired) == "a,b,past,past", "取消後の再登録を実行する");
+        playback.Load(new[] { Effect("00:01:00:00", "default"), Effect("00:01:00:00", "added") });
+        playback.Advance(-1, Fire);
+        Check(fired.Count == 4, "停止中はキューを進めない");
+        playback.Advance(60, Fire);
+        Check(string.Join(",", fired) == "a,b,past,past,default,added", "同じ時刻は入力順に実行する");
+
         playback.Load(null);
         Check(playback.Count == 0, "null の定義は空として扱う");
+
+        var duplicate = new TimelineActionPlayback();
+        var duplicateCount = 0;
+        var same = Effect("00:00:01:00", "same");
+        duplicate.Load(new[] { same, same });
+        duplicate.Advance(1, _ => duplicateCount++);
+        Check(duplicateCount == 1, "一覧内の同一内容は1回だけ実行する");
+        duplicate.Load(new[] { same });
+        duplicate.Advance(2, _ => duplicateCount++);
+        Check(duplicateCount == 1, "追加分を消してもデフォルト側に同じ内容が残れば再実行しない");
 
         var defaults = new TimelineActionPlayback();
         var defined = DefaultActionSet.Create();

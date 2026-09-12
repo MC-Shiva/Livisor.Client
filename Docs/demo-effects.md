@@ -7,7 +7,7 @@ DemoSceneで演出を確認する人と、演出の時刻を編集する人向�
 ## 演出の形式
 
 定義の正本は、親リポジトリの`Livisor.Shared/DTO/DefaultActionSet.cs`です。
-`Create()`が返すC#の`TimelineAction[]`を使います。
+`Create()`が返すC#の`TimelineAction[]`を使います。Serverも起動時に同じ定義を読み込みます。
 各要素の`Time`が時刻、`ActionType.Effect`が演出の操作、`Value`の文字列が演出名です。
 
 | 演出名 | 動作 |

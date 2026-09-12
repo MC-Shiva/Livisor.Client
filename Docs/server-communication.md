@@ -7,13 +7,13 @@
 
 | 対象 | 現在の対応 |
 |---|---|
-| Server | Adminの操作を受け、再生状態と予約1件を配信する |
+| Server | 起動時にSharedの定義を読み、デフォルト演出とAdminの追加予約を一覧で配信する |
 | DemoScene | Sharedを直接読み、紙吹雪の開始・停止、雷、銀テープを単独再生する |
-| Admin | `Effect`を文字列で入力し、予約1件を送れる。デフォルト演出を編集する画面はない |
-| LiveScene | Adminの予約で紙吹雪の開始・停止、雷、銀テープを実行する。既存のシーン固定演出も動く |
+| Admin | `Effect`を文字列で入力し、全行をまとめて追加できる。デフォルト演出を編集する画面はない |
+| LiveScene | Serverの一覧に従い、紙吹雪の開始・停止、雷、銀テープを実行する。既存のシーン固定演出も動く |
 
 演出の形式・定義の編集・全曲検証は[DemoSceneのデフォルト演出](demo-effects.md)を参照。
-LiveSceneは事前定義を読み込まない。Serverも事前定義を配信しない。
+LiveSceneはServerから受信した一覧を使う。DemoSceneはSharedの同じ定義を直接読む。
 
 ## 1. まず押さえること
 
@@ -31,8 +31,8 @@ LiveSceneは事前定義を読み込まない。Serverも事前定義を配信�
 | 参加 | Hub で room に入ること。入った時点の状態同期の全項目が返る |
 | トランスポート | 「再生中か」「再生開始のサーバー時刻」「通知のサーバー時刻」「予約アクション」をまとめた `TransportState` |
 | 状態同期 | 音量や心拍数など、変わり続ける値の共有。変化した項目だけが `RoomStatePatch` で届く |
-| 予約アクション | 「再生開始から t 後に、これをする」の 1 件。room ごとに 1 件だけ。新しい登録で置き換わる |
-| 相対時間 | 再生開始を `00:00:00:00` とした経過時間。`HH:mm:ss:ff`（時:分:秒:センチ秒）。`00:01:30:00` は 90 秒後 |
+| 予約アクション | 「曲の先頭から t 秒の位置で、これをする」の1件。Serverのキューには複数件を保持する |
+| 相対時間 | 曲の先頭を `00:00:00:00` とした再生位置。`HH:mm:ss:ff`（時:分:秒:センチ秒）。`00:01:30:00` は 90 秒後 |
 | 発火 | 予約アクションの時刻になり、クライアントがそれを実行すること |
 | 配信 | サーバーが同じ room の全接続へ通知を送ること。送った本人にも届く |
 
@@ -123,27 +123,26 @@ void ApplyState(RoomStatePatch patch)
 
 ### 4.4 トランスポートを反映する
 
-`TransportState`は再生状態と予約1件を持つ。`TimelineReceiver.ApplyTransport`は次の順で処理する。
+`TransportState.Actions`はデフォルト演出と追加予約の全件を持つ。
+`TimelineReceiver`は受信した一覧を`TimelineActionPlayback.Load()`へ渡し、`Playing`で再生・停止を切り替える。
+毎フレーム`Advance()`へ曲の再生位置を渡し、到達したものを一度ずつ実行する。
+DemoSceneもこの再生処理を使う。
 
-1. 前の予約のタイマーを取り消す。
-2. `Playing`で再生・停止を切り替える。
-3. 再生中で未実行の予約があれば、指定位置まで待つ。
+LiveSceneは`StageDirector.MusicTimeSeconds`を使う。曲が始まる前と一時停止中は進まない。
+予約時刻は曲の先頭からの位置で、追加時に過ぎていた位置なら1回すぐに実行する。
+STOPは曲を一時停止し、PLAYは続きから再開する。実行済みの演出は繰り返さない。
 
-LiveSceneでは`StageDirector.MusicTimeSeconds`を使う。曲が始まる前と一時停止中は進まない。
-予約時刻は曲の先頭からの位置で、過ぎた位置なら1回すぐに実行する。
-STOPは曲を一時停止し、PLAYは続きから再開する。予約も再開後の曲の位置に従う。
-STOPしても予約は残り、次のPLAYで再び有効になる。実行済みの予約を残したまま再開すると再実行するため、不要な予約はCANCELする。
+同じ時刻・Action・Valueは同じ予約として扱う。予約IDは持たない。
+追加予約を再実行する場合は、CANCELの完了後にSCHEDULEする。
+CANCELしてもデフォルト演出は残り、実行済みのデフォルト演出は再実行しない。
 
-同じ時刻・Action・Valueを再通知しても、再生中に実行済みなら繰り返さない。
-予約IDは持たない。同じ内容を改めて実行する場合は、CANCELしてからSCHEDULEする。
-
-`StageDirector`のないSandboxでは、従来の`TimelinePlayback.TryGetPendingAction`で待ち時間を求める。
+`StageDirector`のないSandboxでは、受信時の経過時間を次の式で求め、その後の実時間を加えて進める。
 
 ```text
-待ち時間（秒） = 相対時間（秒） − (ServerTimeMs − StartedAtServerMs) / 1000
+受信時の経過時間（秒） = (ServerTimeMs − StartedAtServerMs) / 1000
 ```
 
-受信から`WaitForSecondsRealtime`で待つ。負なら0とする。停止中は待たず、PLAY後は新しいサーバー開始時刻を基準にする。
+停止中は進めず、PLAY後は新しいサーバー開始時刻を基準にする。
 LiveSceneとSandboxでは時刻の基準が異なるため、曲に合わせた演出はLiveSceneで確認する。
 
 ### 4.5 発火する
@@ -198,29 +197,29 @@ async void OnDestroy() => await _client.DisposeAsync();
 | CONNECT | `ConnectAsync(address, roomId)` | アドレス、roomId | 状態同期の全項目とトランスポートがイベントで届く |
 | PLAY | `PlayAsync()` | roomId | `TransportState` |
 | STOP | `StopAsync()` | roomId | `TransportState` |
-| SCHEDULE | `ScheduleActionAsync(action)` | roomId と `TimelineAction` 1 件 | `TransportState` |
-| CANCEL | `CancelScheduledActionAsync()` | roomId | `TransportState` |
+| SCHEDULE | `ScheduleActionsAsync(actions)` | roomId と `TimelineAction[]` | `TransportState` |
+| CANCEL | `CancelScheduledActionsAsync()` | roomId | `TransportState` |
 | VOLUME | `PublishStateAsync(entry)` | `{ volume: N }` の 1 項目 | 無し。`OnStateChanged` で自分にも戻る |
 | DISCONNECT | `DisposeAsync()` | 無し | 無し |
 
 - PLAY / STOP は時刻を送らない。開始時刻はサーバーが決める。再生中に PLAY を押し直しても開始時刻は動かない。
-- SCHEDULE は入力行を相対時間の昇順に並べ、先頭の 1 行だけを送る。サーバーの予約は 1 件だけ。
+- SCHEDULE は全入力行を時刻順に並べ、まとめて追加する。既存のキューは残る。CANCEL は追加予約をすべて取り消す。
 - VOLUME は roomId を送らない。参加時の room をサーバーが覚えている。
 
 ### 5.2 例
 
 ```csharp
 // 再生開始の 10 秒後に音量を 30 にする
-var state = await _client.ScheduleActionAsync(new TimelineAction
+var state = await _client.ScheduleActionsAsync(new TimelineAction
 {
     Time = "00:00:10:00",
     Action = ActionType.VolumeChange,
     Value = ActionValue.From(30),
 });
-// state.ScheduledAction.Time == "00:00:10:00"
+// state.Actions にデフォルト演出と追加予約が入る
 
 // 再生開始の 10 秒後に停止する
-await _client.ScheduleActionAsync(new TimelineAction
+await _client.ScheduleActionsAsync(new TimelineAction
 {
     Time = "00:00:10:00",
     Action = ActionType.Play,
@@ -244,7 +243,7 @@ Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。�
 |---|---|---|
 | `00:00:10:00` | `Effect` | `confettiOff` |
 
-`SCHEDULE`が送るのは時刻順の先頭1件だけ。開始と停止の2行を入れても、2件がまとめて予約されるわけではない。
+`SCHEDULE`は全行を追加する。開始と停止の2行を入れると、両方がキューへ追加される。
 `CANCEL`は予約を取り消す操作であり、実行済みの紙吹雪へ停止要求を送る操作ではない。
 この入力の送信先はサーバー。DemoSceneはAdminへ接続せず、Sharedの定義を使う。
 LiveSceneで実行するには、AdminとClientを同じサーバー・roomに接続し、PLAY後にSCHEDULEする。
@@ -260,9 +259,9 @@ LiveSceneで実行するには、AdminとClientを同じサーバー・roomに�
 | `Playing` | bool | 再生中か |
 | `StartedAtServerMs` | long | 再生開始のサーバー時刻（UTC ミリ秒）。停止中は 0 |
 | `ServerTimeMs` | long | この通知を作ったサーバー時刻（送信時刻） |
-| `ScheduledAction` | `TimelineAction?` | 予約アクション 1 件。無ければ null |
+| `Actions` | `TimelineAction[]` | デフォルト演出と追加予約を時刻順に並べた全件 |
 
-MessagePackのキーは0〜3。`TimelineAction`の形式はDemoSceneの事前定義とAdminの予約で共通。
+MessagePackのキーは0〜3。Key 3を単一予約から配列へ変更したため、ServerとClientは同時に更新する。`TimelineAction`の形式はDemoSceneの事前定義とAdminの予約で共通。
 
 `TimelineAction`
 
@@ -300,12 +299,12 @@ MessagePackのキーは0〜3。`TimelineAction`の形式はDemoSceneの事前定
 
 ## 8. 決まりごと
 
-- 予約アクションは room ごとに 1 件。新しい登録が前の 1 件を置き換える。停止しても残る。消すのは CANCEL だけ。
-- 再生中に同じ時刻・Action・Valueを再通知しても、実行済みなら繰り返さない。同じ内容を再実行するときはCANCELしてからSCHEDULEする。
-- 予約の時刻は相対時間。絶対時刻を入れても形式が同じなので拒否されず、別の時刻で発火する。
+- roomごとにデフォルト演出と追加予約を保持する。追加時は全件を検証し、1件でも不正なら追加しない。CANCELは追加予約だけを除く。
+- 再生中に同じ時刻・Action・Valueを再通知しても、実行済みなら繰り返さない。同じ内容を再実行するときはCANCELしてからSCHEDULEする。Serverの件数には重複分も含まれる。
+- 予約の時刻は曲の先頭からの位置。絶対時刻を入れても形式が同じなので拒否されず、別の時刻で発火する。
 - 音量などの値の範囲（0〜100 など）はサーバーで検証しない。画面側で制限する。
 - LiveSceneは各Clientの曲の位置を使う。通信遅延によるClient間の再生開始のずれは補正しない。
-- サーバーの room はメモリ上にある。サーバーを再起動すると room は空になり、Hub の接続も切れる。
+- サーバーの room はメモリ上にある。サーバーを再起動すると追加予約は消え、デフォルト演出から始まる。Hubの接続も切れる。
 - 自動再接続は無い。切断を知るには Hub の `WaitForDisconnectAsync()` を待つ（`RoomClient` はまだ公開していないので、必要なら足す）。再接続は `DisposeAsync` してから `ConnectAsync` をやり直す。
 
 ## 9. 環境
@@ -327,7 +326,7 @@ MessagePackのキーは0〜3。`TimelineAction`の形式はDemoSceneの事前定
 | `Livisor/Tests/Timeline` | `Assets/Scenes/Sandbox.unity` の `TimelineReceiver` が再生・予約・音量を受けて反映する |
 | `Livisor/Tests/Admin` | 管理者画面のボタンが送信し、応答で表示が変わる |
 | `Livisor/Tests/Admin (all features)` | 管理者画面の全機能と、別接続の観客クライアントへの配信 |
-| `Livisor/Tests/Live Effects` | Admin → Server → LiveSceneで紙吹雪の開始・停止、雷、銀テープ、予約の重複・取消・一時停止、音量を確認 |
+| `Livisor/Tests/Live Effects` | Admin → Server → LiveSceneで紙吹雪の開始・停止、雷、銀テープ、デフォルトと複数追加予約の共存、再配信・取消・一時停止、音量を確認 |
 
 起動メニューは`Assets/Tests/Editor/TestScenes.cs`、Play Mode中の検証処理は`Assets/Tests/Runtime/Test*Driver.cs`に置く。
 
@@ -340,8 +339,8 @@ LiveSceneのテストは`http://127.0.0.1:5210`のローカルサーバーを使
 
 ```
 [Receiver] joined room 'room1'
-[Receiver] transport: playing=False scheduled=none        ← 接続直後の取得
-[Receiver] transport: playing=True scheduled=00:00:10:00  ← PLAY の通知
+[Receiver] transport: playing=False actions=6  ← デフォルト6件を取得
+[Receiver] transport: playing=True actions=6   ← PLAYの通知
 ```
 
 ## 11. よくある間違い
@@ -349,8 +348,8 @@ LiveSceneのテストは`http://127.0.0.1:5210`のローカルサーバーを使
 | 間違い | 何が起きるか | 直し方 |
 |---|---|---|
 | 通知のイベントの中で UI やシーンを触る | 別スレッドからの操作で例外や不定動作 | キューに積んで `Update` で反映する（4.2） |
-| トランスポートが届いたときに古いタイマーを消さない | 予約が二重に発火する | 先に取り消してから張り直す（4.4） |
-| 予約の時刻に絶対時刻を入れる | 拒否されず、別の時刻で発火する | 再生開始からの相対時間で入れる |
+| トランスポートが届くたびに実行済みの記録を消す | 予約が二重に発火する | 同じTimelineActionPlaybackへLoadする（4.4） |
+| 予約の時刻に絶対時刻を入れる | 拒否されず、別の時刻で発火する | 曲の先頭からの位置で入れる |
 | `Action`と値の型を取り違える | `InvalidArgument`で拒否 | `Play`はbool、`VolumeChange`はint、`Effect`はstring |
 | 参加する前に音量を送る | `FailedPrecondition` で拒否 | `ConnectAsync` の完了を待つ |
 | 状態同期に `playing` を送る | 拒否はされないが、再生状態が二重になり食い違う | 再生状態はトランスポートだけを見る |
@@ -361,9 +360,9 @@ LiveSceneのテストは`http://127.0.0.1:5210`のローカルサーバーを使
 
 - [ ] `ConnectAsync` の直後に `StateChanged` と `TransportChanged` が 1 回ずつ来ることを前提に初期表示を作った
 - [ ] 通知はキューに積み、`Update` で反映している
-- [ ] トランスポートが届くたびに、タイマー取消 → 再生切替 → タイマー張り直し、の順で処理している
-- [ ] LiveSceneの演出は曲の位置で待ち、Sandboxのタイマーは`WaitForSecondsRealtime`を使う
-- [ ] 予約の `Time` は相対時間 `HH:mm:ss:ff` で送っている
+- [ ] トランスポートが届くたびに一覧をLoadし、Playingで再生を切り替えている
+- [ ] LiveSceneは曲の位置、音源のないSandboxはサーバーの経過時間と受信後の実時間でAdvanceを呼ぶ
+- [ ] 予約の `Time` は曲の先頭からの位置を `HH:mm:ss:ff` で送っている
 - [ ] `Play`はbool、`VolumeChange`はint、`Effect`は空白でないstringを入れている
 - [ ] `VolumeChange` の発火後に `volume` を書き戻している
 - [ ] 知らない状態キーを無視している

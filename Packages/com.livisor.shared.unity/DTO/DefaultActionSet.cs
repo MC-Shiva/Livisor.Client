@@ -3,7 +3,7 @@ using Livisor.Shared.Common;
 namespace Livisor.Shared.DTO
 {
     /// <summary>
-    /// DemoScene 専用の事前定義。Client が直接読み、曲の再生位置に合わせて実行する。
+    /// Server と DemoScene が共通で使う事前定義。Server は起動時、Demo は直接読み込む。
     /// Create の各行は At(曲の先頭からの時刻, 操作, 値)。時刻は "HH:mm:ss:ff"（末尾はセンチ秒）。
     /// 音量なら At("00:00:30:00", ActionType.VolumeChange, 50)、停止なら ActionType.Play, false と書く。
     /// 変更後はリポジトリ直下で make shared/sync を実行してから、Client を再ビルドする。

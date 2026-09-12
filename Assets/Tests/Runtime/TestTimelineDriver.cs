@@ -85,7 +85,7 @@ public class TestTimelineDriver : MonoBehaviour
         Debug.Log("[Smoke] admin connected");
 
         await admin.PlayAsync();
-        await admin.ScheduleActionAsync(new TimelineAction { Time = "00:00:01:00", Action = ActionType.VolumeChange, Value = 30 });
+        await admin.ScheduleActionsAsync(new TimelineAction { Time = "00:00:01:00", Action = ActionType.VolumeChange, Value = 30 });
         await admin.PublishStateAsync(new RoomStateEntry { Key = RoomStateKeys.Volume, Value = ActionValue.From(42) });
         await Task.Delay(2500); // 予約（1 秒後の音量 30）が受信側で発火するのを待つ
         await admin.StopAsync();

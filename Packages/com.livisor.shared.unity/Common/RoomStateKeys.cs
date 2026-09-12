@@ -12,7 +12,7 @@ namespace Livisor.Shared.Common
     {
         /// <summary>
         /// 音量の大きさ。数値。現在値はこの状態が正。
-        /// <c>ITimelineService.ScheduleActionAsync</c> の volumeChange は「再生開始から相対 t 後に
+        /// <c>ITimelineService.ScheduleActionsAsync</c> の volumeChange は「再生開始から相対 t 後に
         /// 音量を変える」予約であり、発火したクライアントが結果をこの状態へ publish する。
         /// </summary>
         public const string Volume = "volume";
