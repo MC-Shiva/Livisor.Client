@@ -92,7 +92,7 @@ public class TestAdminFullDriver : MonoBehaviour
         Click(root, "play-button");
         yield return WaitUntil(() => _transports.Count > n0, 5f);
         var t1 = _transports.LastOrDefault();
-        Check(t1 != null && t1.Playing && t1.Actions.Length == DefaultActionSet.Create().Length && t1.StartedAtServerMs > 0, "PLAY: 観測役に playing=true・デフォルト演出・開始時刻ありが届く");
+        Check(t1 != null && t1.Playing && t1.Actions.Length == DefaultTimeline.Create().Length && t1.StartedAtServerMs > 0, "PLAY: 観測役に playing=true・デフォルト演出・開始時刻ありが届く");
         yield return WaitSent(root);
         Check(root.Q<Label>("transport-status").text.StartsWith("再生中"), "PLAY: 画面が『再生中』になる");
         Check(ReceiverCount("[Play] PLAY") >= 1, "PLAY: 受信側が再生する");
@@ -149,12 +149,12 @@ public class TestAdminFullDriver : MonoBehaviour
         yield return WaitUntil(() => _transports.Count > n2, 5f);
         var t3 = _transports.LastOrDefault();
         yield return WaitSent(root);
-        Check(t3 != null && t3.Actions.Length == DefaultActionSet.Create().Length + 2
+        Check(t3 != null && t3.Actions.Length == DefaultTimeline.Create().Length + 2
               && t3.Actions.Any(a => a.Time == "00:00:01:00" && a.Action == ActionType.VolumeChange && a.Value.Number == 30)
               && t3.Actions.Any(a => a.Time == "00:00:05:00" && a.Action == ActionType.Play && !a.Value.Bool),
               "SCHEDULE: デフォルト演出と入力した2行が届く");
         Check(root.Q<Label>("status-label").text.Contains("2 件の追加"), "SCHEDULE: 送信した件数が出る");
-        Check(root.Q<Label>("transport-status").text.Contains($"キュー {DefaultActionSet.Create().Length + 2} 件"), "SCHEDULE: 画面にキュー件数が出る");
+        Check(root.Q<Label>("transport-status").text.Contains($"キュー {DefaultTimeline.Create().Length + 2} 件"), "SCHEDULE: 画面にキュー件数が出る");
         yield return WaitUntil(() => ReceiverCount("VOLUME -> 30") > fired30, 4f);
         Check(ReceiverCount("VOLUME -> 30") > fired30, "SCHEDULE: 過去時刻の予約で音量 30 が発火する");
         yield return WaitUntil(() => _volumes.Count > v1, 3f);
@@ -166,8 +166,8 @@ public class TestAdminFullDriver : MonoBehaviour
         yield return WaitUntil(() => _transports.Count > n3, 5f);
         var t4 = _transports.LastOrDefault();
         yield return WaitSent(root);
-        Check(t4 != null && t4.Actions.Length == DefaultActionSet.Create().Length && t4.Playing, "CANCEL: 追加予約だけ消え、デフォルト演出と再生は残る");
-        Check(root.Q<Label>("transport-status").text.Contains($"キュー {DefaultActionSet.Create().Length} 件"), "CANCEL: デフォルト演出の件数が表示される");
+        Check(t4 != null && t4.Actions.Length == DefaultTimeline.Create().Length && t4.Playing, "CANCEL: 追加予約だけ消え、デフォルト演出と再生は残る");
+        Check(root.Q<Label>("transport-status").text.Contains($"キュー {DefaultTimeline.Create().Length} 件"), "CANCEL: デフォルト演出の件数が表示される");
 
         // 9. SCHEDULE → STOP: 停止しても予約は残る
         var n4 = _transports.Count;
@@ -179,8 +179,8 @@ public class TestAdminFullDriver : MonoBehaviour
         yield return WaitUntil(() => _transports.Count > n5, 5f);
         var t5 = _transports.LastOrDefault();
         yield return WaitSent(root);
-        Check(t5 != null && !t5.Playing && t5.Actions.Length == DefaultActionSet.Create().Length + 2 && t5.StartedAtServerMs == 0, "STOP: playing=false・開始時刻 0・予約は残る");
-        Check(root.Q<Label>("transport-status").text.StartsWith("停止中") && root.Q<Label>("transport-status").text.Contains($"キュー {DefaultActionSet.Create().Length + 2} 件"), "STOP: 画面が『停止中 / 予約あり』になる");
+        Check(t5 != null && !t5.Playing && t5.Actions.Length == DefaultTimeline.Create().Length + 2 && t5.StartedAtServerMs == 0, "STOP: playing=false・開始時刻 0・予約は残る");
+        Check(root.Q<Label>("transport-status").text.StartsWith("停止中") && root.Q<Label>("transport-status").text.Contains($"キュー {DefaultTimeline.Create().Length + 2} 件"), "STOP: 画面が『停止中 / 予約あり』になる");
         Check(ReceiverCount("[Play] STOP") >= 2, "STOP: 受信側が停止する");
 
         // 10. 再度 PLAY → 実行済みの予約は繰り返さない
@@ -189,7 +189,7 @@ public class TestAdminFullDriver : MonoBehaviour
         yield return WaitUntil(() => _transports.Count > n6, 5f);
         var t6 = _transports.LastOrDefault();
         yield return WaitSent(root);
-        Check(t6 != null && t6.Playing && t1 != null && t6.StartedAtServerMs > t1.StartedAtServerMs && t6.Actions.Length == DefaultActionSet.Create().Length + 2, "再 PLAY: 新しい開始時刻になり予約は残る");
+        Check(t6 != null && t6.Playing && t1 != null && t6.StartedAtServerMs > t1.StartedAtServerMs && t6.Actions.Length == DefaultTimeline.Create().Length + 2, "再 PLAY: 新しい開始時刻になり予約は残る");
         yield return new WaitForSecondsRealtime(2f);
         Check(ReceiverCount("VOLUME -> 30") == fired30b, "再 PLAY: 実行済みの予約は繰り返さない");
 

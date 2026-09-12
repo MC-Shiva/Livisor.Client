@@ -5,7 +5,7 @@ using UnityEngine;
 /// <summary>
 /// 通信を使わないDemoScene専用のライブ操作。
 /// StageDirectorの通常の再生経路を使い、音楽と演出のタイミングを維持する。
-/// デフォルト演出（Issue #22）はサーバーを介さず、Shared の <see cref="DefaultActionSet"/> を直接読んで
+/// デフォルト演出（Issue #22）はサーバーを介さず、Shared の <see cref="DefaultTimeline"/> を直接読んで
 /// 音楽の再生位置で発火する。
 /// </summary>
 [DefaultExecutionOrder(100)]
@@ -37,7 +37,7 @@ public sealed class DemoSceneController : MonoBehaviour
         }
 
         _effects = new EffectDispatcher(_stageDirector);
-        _playback.Load(DefaultActionSet.Create());
+        _playback.Load(DefaultTimeline.Create());
         Debug.Log($"[DemoScene] default actions loaded: {_playback.Count}", this);
 
         if (_playOnStart)

@@ -90,7 +90,7 @@ public class TestLiveEffectsDriver : MonoBehaviour
         yield return new WaitForSecondsRealtime(1f);
         Check(_effects.Count == count, "same reservation is not executed twice");
         Click("cancel-schedule-button");
-        yield return WaitFor(() => _root.Q<Label>("transport-status").text.Contains($"キュー {DefaultActionSet.Create().Length} 件"), 5);
+        yield return WaitFor(() => _root.Q<Label>("transport-status").text.Contains($"キュー {DefaultTimeline.Create().Length} 件"), 5);
         Schedule(EffectNames.ConfettiOn, 0);
         yield return WaitFor(() => _effects.Count > count, 5);
         Check(_effects.Count == count + 1, "cancel then schedule starts a new reservation");
@@ -133,8 +133,8 @@ public class TestLiveEffectsDriver : MonoBehaviour
         yield return null;
         SetRow(list.GetRootElementForIndex(1), EffectNames.ConfettiOn, firstTime + 2);
         Click("schedule-button");
-        yield return WaitFor(() => _root.Q<Label>("transport-status").text.Contains($"キュー {DefaultActionSet.Create().Length + 2} 件"), 5);
-        Check(_root.Q<Label>("transport-status").text.Contains($"キュー {DefaultActionSet.Create().Length + 2} 件"), "SCHEDULE appends all rows alongside defaults");
+        yield return WaitFor(() => _root.Q<Label>("transport-status").text.Contains($"キュー {DefaultTimeline.Create().Length + 2} 件"), 5);
+        Check(_root.Q<Label>("transport-status").text.Contains($"キュー {DefaultTimeline.Create().Length + 2} 件"), "SCHEDULE appends all rows alongside defaults");
         yield return WaitFor(() => _effects.Count >= count + 2, 10);
         Check(_effects.Skip(count).Take(2).SequenceEqual(new[] { EffectNames.ConfettiOff, EffectNames.ConfettiOn }), "both queued additions execute in order");
         Check(_times.Count >= count + 2 && Math.Abs(_times[count] - firstTime) < 0.3

@@ -65,7 +65,7 @@ public class TestDemoEffectsDriver : MonoBehaviour
         AudioListener.volume = 0f;
 
         _director = FindFirstObjectByType<StageDirector>();
-        var defined = DefaultActionSet.Create().OrderBy(a => a.Time).ToArray();
+        var defined = DefaultTimeline.Create().OrderBy(a => a.Time).ToArray();
         var expected = defined.Select(a => a.Value.Text).ToArray();
         var deadline = Time.realtimeSinceStartup + 320f;
         var started = false;

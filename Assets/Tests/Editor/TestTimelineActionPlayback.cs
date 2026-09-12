@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// メモリ上の一覧を再生する TimelineActionPlayback と Shared の定義（DefaultActionSet）のテスト。
+/// メモリ上の一覧を再生する TimelineActionPlayback と Shared の定義（DefaultTimeline）のテスト。
 /// 音源もシーンも使わないので、バッチ実行できる。
 /// バッチ実行: unity run . --timeout 300 -- -nographics -executeMethod TestTimelineActionPlayback.Run -logFile Logs/default-actions-check.log
 /// エディタ上: メニュー Livisor / Tests / Timeline Action Playback
@@ -78,7 +78,7 @@ public static class TestTimelineActionPlayback
         Check(duplicateCount == 1, "追加分を消してもデフォルト側に同じ内容が残れば再実行しない");
 
         var defaults = new TimelineActionPlayback();
-        var defined = DefaultActionSet.Create();
+        var defined = DefaultTimeline.Create();
         defaults.Load(defined);
         Check(defaults.Count == defined.Length && defined.Length > 0, "Shared のデフォルト演出はすべて HH:mm:ss:ff で読める");
         foreach (var a in defined)

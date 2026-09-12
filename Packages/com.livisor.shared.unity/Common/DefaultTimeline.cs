@@ -1,6 +1,6 @@
-using Livisor.Shared.Common;
+using Livisor.Shared.DTO;
 
-namespace Livisor.Shared.DTO
+namespace Livisor.Shared.Common
 {
     /// <summary>
     /// Server と DemoScene が共通で使う事前定義。Server は起動時、Demo は直接読み込む。
@@ -11,7 +11,7 @@ namespace Livisor.Shared.DTO
     /// Demo の時刻は音源の終了前に置く。
     /// 銀テープは寿命 12 秒と射出待ち 0.6 秒があるため、終了時の射出要求まで 13 秒以上空ける。
     /// </summary>
-    public static class DefaultActionSet
+    public static class DefaultTimeline
     {
         /// <summary>
         /// デフォルト演出を返す。DTO は可変なので、呼び出しごとに新しいインスタンスを作る。

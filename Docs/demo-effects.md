@@ -6,7 +6,7 @@ DemoSceneで演出を確認する人と、演出の時刻を編集する人向�
 
 ## 演出の形式
 
-定義の正本は、親リポジトリの`Livisor.Shared/DTO/DefaultActionSet.cs`です。
+定義の正本は、親リポジトリの`Livisor.Shared/Common/DefaultTimeline.cs`です。
 `Create()`が返すC#の`TimelineAction[]`を使います。Serverも起動時に同じ定義を読み込みます。
 各要素の`Time`が時刻、`ActionType.Effect`が演出の操作、`Value`の文字列が演出名です。
 
@@ -22,7 +22,7 @@ DemoSceneで演出を確認する人と、演出の時刻を編集する人向�
 開始・停止は`effect`の文字列で表し、`TimelineAction`に新しい項目は追加しません。
 オンを重ねて指定しても、再生中の紙吹雪を最初からやり直しません。
 
-`DefaultActionSet.Create()`の配列内では、次のように記述します。
+`DefaultTimeline.Create()`の配列内では、次のように記述します。
 
 ```csharp
 At("00:00:00:50", ActionType.Effect, EffectNames.ConfettiOn),
@@ -36,7 +36,7 @@ At("00:03:30:00", ActionType.Effect, EffectNames.ConfettiOff),
 
 ## 実行の流れ
 
-1. `DemoSceneController.Start()`が`DefaultActionSet.Create()`で一覧を取得する。
+1. `DemoSceneController.Start()`が`DefaultTimeline.Create()`で一覧を取得する。
 2. `TimelineActionPlayback.Load()`が一覧をメモリに保持し、時刻順に並べる。
 3. 曲の再生位置が指定時刻に達すると、`EffectDispatcher`が該当する演出を実行する。
 
@@ -58,7 +58,7 @@ DemoSceneは起動時に一度読み込み、毎フレーム`Advance()`に曲の
 ## 定義を変更する
 
 1. Play Modeを終了する。
-2. 親リポジトリの`Livisor.Shared/DTO/DefaultActionSet.cs`を編集する。
+2. 親リポジトリの`Livisor.Shared/Common/DefaultTimeline.cs`を編集する。
 3. 親リポジトリのルートで`make shared/sync`を実行する。
 4. Unityのファイル更新とコンパイルが完了するまで待つ。
 5. DemoSceneを再生する。
