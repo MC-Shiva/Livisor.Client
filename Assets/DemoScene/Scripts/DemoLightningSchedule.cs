@@ -8,7 +8,7 @@ public static class DemoLightningSchedule
     {
         new(15, "unity-chan"),
         new(30, "audience"),
-        new(45, "stage"),
+        new(45, 3, 0, 2),
         new(60, "unity-chan"),
         new(75, "audience"),
         new(90, "stage"),
