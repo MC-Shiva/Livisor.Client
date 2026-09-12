@@ -34,6 +34,20 @@
             </ui:VisualElement>
             <ui:Label name="volume-status" text="-" class="status-label"/>
         </ui:VisualElement>
+        <ui:VisualElement name="effects-panel" class="panel">
+            <ui:Label text="即時演出（接続済み・再生中のみ）" class="field-label"/>
+            <ui:VisualElement name="effects-controls">
+                <ui:VisualElement class="button-row">
+                    <ui:DropdownField name="lightning-target" label="雷の対象" class="console-input"/>
+                    <ui:Button name="lightning-button" text="雷を落とす" class="action-button"/>
+                    <ui:Button name="silver-streamer-button" text="銀テープを射出" class="action-button"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="button-row">
+                    <ui:Button name="confetti-on-button" text="紙吹雪 開始" class="action-button"/>
+                    <ui:Button name="confetti-off-button" text="紙吹雪 停止" class="action-button"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
         <ui:VisualElement name="timeline-panel" class="panel timeline-panel">
             <ui:Label text="Schedule (time from song start, append all rows)" class="field-label"/>
             <ui:VisualElement name="timeline-header" class="timeline-row timeline-header">

@@ -4,7 +4,8 @@ using UnityEngine;
 /// <summary>
 /// <see cref="ActionType.Effect"/> の演出名（<see cref="EffectNames"/>）をシーンの演出に対応づけて実行する。
 /// DemoSceneController と TimelineReceiver が共用する。時刻の管理や通信は呼び出し側が行う。
-/// 演出を増やすときは EffectNames に定数を足し、ここに case を足す。サーバーの変更は要らない。
+/// 演出を増やすときは EffectNames に定数を足し、ここに case を足す。
+/// Adminの即時演出ではServer側の入力検証も更新する。
 /// 知らない名前は警告して無視する。
 /// </summary>
 public sealed class EffectDispatcher
@@ -53,7 +54,7 @@ public sealed class EffectDispatcher
         Debug.Log($"[Effect] {effectName}");
     }
 
-    // DemoはC#で指定した着弾点を使う。
+    // Demoの座標指定と、Adminの対象名から求めた着弾点に使う。
     public void FireLightning(Vector3 worldPosition)
     {
         ResolveLightning().StrikeAt(worldPosition);

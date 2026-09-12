@@ -28,5 +28,8 @@ namespace Livisor.Shared.UnaryServices
 
         /// <summary>追加予約をすべて取り消す。デフォルト演出は残す。</summary>
         UnaryResult<TransportState> CancelScheduledActionsAsync(string roomId);
+
+        /// <summary>再生中のroomへ演出を即時通知する。予約キューには追加しない。</summary>
+        UnaryResult FireEffectAsync(string roomId, EffectCommand effect);
     }
 }

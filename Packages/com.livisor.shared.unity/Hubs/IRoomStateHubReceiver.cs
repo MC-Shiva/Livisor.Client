@@ -16,5 +16,8 @@ namespace Livisor.Shared.Hubs
         /// Unary の再生・停止・予約はサーバーで確定したあと、ここから同じ room の全員へ届く。
         /// </summary>
         void OnTransportChanged(TransportState state);
+
+        /// <summary>現在参加中のroomで、受信時に1回実行する演出を受け取る。</summary>
+        void OnEffectTriggered(EffectCommand effect);
     }
 }

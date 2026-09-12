@@ -57,6 +57,14 @@ public class AdminConsoleView : MonoBehaviour
     private Button _scheduleButton;
     private Button _cancelScheduleButton;
     private Label _statusLabel;
+    private VisualElement _effectsPanel;
+    private DropdownField _lightningTarget;
+    private Button _lightningButton;
+    private Button _silverStreamerButton;
+    private Button _confettiOnButton;
+    private Button _confettiOffButton;
+    private bool _playing;
+    private bool _operationPending;
 
     /// <summary>
     /// UIDocument の要素を Query して初期値を設定し、TimelineListController のセットアップと
@@ -91,6 +99,14 @@ public class AdminConsoleView : MonoBehaviour
         _scheduleButton = root.Q<Button>("schedule-button");
         _cancelScheduleButton = root.Q<Button>("cancel-schedule-button");
         _statusLabel = root.Q<Label>("status-label");
+        _effectsPanel = root.Q("effects-controls");
+        _lightningTarget = root.Q<DropdownField>("lightning-target");
+        _lightningTarget.choices = new List<string> { LightningTargets.UnityChan, LightningTargets.Audience, LightningTargets.Stage };
+        _lightningTarget.value = LightningTargets.UnityChan;
+        _lightningButton = root.Q<Button>("lightning-button");
+        _silverStreamerButton = root.Q<Button>("silver-streamer-button");
+        _confettiOnButton = root.Q<Button>("confetti-on-button");
+        _confettiOffButton = root.Q<Button>("confetti-off-button");
 
         _serverAddressField.value = _serverConfig != null ? _serverConfig.ServerAddress : string.Empty;
         _roomIdField.value = _roomId;
@@ -108,6 +124,10 @@ public class AdminConsoleView : MonoBehaviour
         _volumeField.RegisterValueChangedCallback(OnVolumeValueChanged);
         _scheduleButton.clicked += OnScheduleClicked;
         _cancelScheduleButton.clicked += OnCancelScheduleClicked;
+        _lightningButton.clicked += OnLightningClicked;
+        _silverStreamerButton.clicked += OnSilverStreamerClicked;
+        _confettiOnButton.clicked += OnConfettiOnClicked;
+        _confettiOffButton.clicked += OnConfettiOffClicked;
 
         SetState(ConnectionState.Disconnected);
         SetStatus(string.Empty);
@@ -125,6 +145,10 @@ public class AdminConsoleView : MonoBehaviour
         if (_volumeField != null) _volumeField.UnregisterValueChangedCallback(OnVolumeValueChanged);
         if (_scheduleButton != null) _scheduleButton.clicked -= OnScheduleClicked;
         if (_cancelScheduleButton != null) _cancelScheduleButton.clicked -= OnCancelScheduleClicked;
+        if (_lightningButton != null) _lightningButton.clicked -= OnLightningClicked;
+        if (_silverStreamerButton != null) _silverStreamerButton.clicked -= OnSilverStreamerClicked;
+        if (_confettiOnButton != null) _confettiOnButton.clicked -= OnConfettiOnClicked;
+        if (_confettiOffButton != null) _confettiOffButton.clicked -= OnConfettiOffClicked;
     }
 
     /// <summary>破棄時に接続中のクライアントを DisposeAsync で確実に切断する。</summary>
@@ -236,6 +260,18 @@ public class AdminConsoleView : MonoBehaviour
 
     private void OnCancelScheduleClicked() => _ = RunAsync("予約取消", () => _client.CancelScheduledActionsAsync());
 
+    private void OnLightningClicked() => SendEffect("雷", EffectNames.Lightning, _lightningTarget.value);
+    private void OnSilverStreamerClicked() => SendEffect("銀テープ", EffectNames.SilverStreamer);
+    private void OnConfettiOnClicked() => SendEffect("紙吹雪の開始", EffectNames.ConfettiOn);
+    private void OnConfettiOffClicked() => SendEffect("紙吹雪の停止", EffectNames.ConfettiOff);
+
+    private void SendEffect(string label, string name, string target = "")
+    {
+        if (!_playing) return;
+        var effect = new EffectCommand { Name = name, Target = target };
+        _ = RunAsync(label, () => _client.FireEffectAsync(effect));
+    }
+
     /// <summary>入力行を全件検証し、Server のキューへまとめて追加する。</summary>
     private void OnScheduleClicked()
     {
@@ -283,8 +319,8 @@ public class AdminConsoleView : MonoBehaviour
         }
     }
 
-    // 再生・停止・予約は同じ形（Unary を 1 回呼び、確定したトランスポートが返る）なのでまとめる。
-    private async Task RunAsync(string label, Func<Task<TransportState>> operation)
+    // Unaryの完了を表示する。再生状態の更新はHubの通知で反映する。
+    private async Task RunAsync(string label, Func<Task> operation)
     {
         if (_client == null)
         {
@@ -292,13 +328,14 @@ public class AdminConsoleView : MonoBehaviour
             return;
         }
 
+        if (_operationPending) return;
+        _operationPending = true;
         SetOperationButtonsEnabled(false);
         SetStatus($"{label}を送信中...");
 
         try
         {
-            var state = await operation();
-            ShowTransport(state);
+            await operation();
             SetStatus($"{label}を送りました。");
         }
         catch (Exception e)
@@ -308,6 +345,7 @@ public class AdminConsoleView : MonoBehaviour
         }
         finally
         {
+            _operationPending = false;
             SetOperationButtonsEnabled(_state == ConnectionState.Connected);
         }
     }
@@ -316,7 +354,9 @@ public class AdminConsoleView : MonoBehaviour
 
     private void ShowTransport(TransportState state)
     {
+        _playing = state.Playing;
         _transportLabel.text = $"{(state.Playing ? "再生中" : "停止中")} / キュー {state.Actions.Length} 件";
+        _effectsPanel.SetEnabled(_state == ConnectionState.Connected && _playing && !_operationPending);
     }
 
     private void ShowState(RoomStatePatch patch)
@@ -335,6 +375,7 @@ public class AdminConsoleView : MonoBehaviour
     private void SetState(ConnectionState state, string connectionStatusText = null)
     {
         _state = state;
+        if (state != ConnectionState.Connected) _playing = false;
 
         _connectButton.text = state switch
         {
@@ -369,6 +410,7 @@ public class AdminConsoleView : MonoBehaviour
         _volumeButton.SetEnabled(enabled);
         _scheduleButton.SetEnabled(enabled);
         _cancelScheduleButton.SetEnabled(enabled);
+        _effectsPanel.SetEnabled(enabled && _playing && !_operationPending);
     }
 
     private void SetStatus(string text) => _statusLabel.text = text;
