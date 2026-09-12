@@ -16,6 +16,9 @@ Play Modeを開始すると自動再生し、Gameビューで **S** を押すと
 音楽は本番と同じAnimation Eventによって演出開始の約2秒後に再生されます。
 DemoSceneは本番のBuild Settingsには含めません。
 
+LiveSceneとDemoSceneの途中開始は、共通の `Assets/Common/PerformancePlaybackConfig.asset` の
+Cut ModeとStart Secondsで事前設定できます。操作と演出の扱いは[カットモード](Docs/cut-playback.md)を参照してください。
+
 紙吹雪・雷・銀テープはSharedの事前定義から自動再生します。
 演出の形式、編集手順、検証方法は[DemoSceneのデフォルト演出](Docs/demo-effects.md)を参照してください。
 

@@ -28,13 +28,39 @@ public class MusicPlayerController : MonoBehaviour
     /// <summary>Main と解析用音源を先頭から同時に再生する。</summary>
     public void PlayAll()
     {
-        if (!ResolveSourcesIfNeeded())
-            return;
+        PlayAllFrom(0);
+    }
+
+    /// <summary>全音源の曲内位置を検証する。1つでも不正なら再生を開始しない。</summary>
+    public bool CanPlayFrom(double seconds)
+    {
+        if (!ResolveSourcesIfNeeded() || double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 0)
+            return false;
 
         foreach (var source in GetAllSources())
+            if (source == null || source.clip == null || seconds >= source.clip.samples / (double)source.clip.frequency)
+                return false;
+        return true;
+    }
+
+    /// <summary>Main と解析用音源を、同じ曲内位置から再生する。再開時は ResumeAll を使う。</summary>
+    public bool PlayAllFrom(double seconds)
+    {
+        if (!CanPlayFrom(seconds))
+        {
+            Debug.LogError($"[MusicPlayer] Invalid playback position or missing audio clip: {seconds}", this);
+            return false;
+        }
+
+        foreach (var source in GetAllSources())
+        {
+            source.Stop();
+            source.timeSamples = (int)(seconds * source.clip.frequency);
             source.Play();
+        }
 
         _hasStarted = true;
+        return true;
     }
 
     /// <summary>再生中の全音源を、現在位置を保持したまま一時停止する。</summary>

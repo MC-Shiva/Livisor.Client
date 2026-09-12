@@ -500,6 +500,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5324f089717a74a5ba46dc8db576ab58, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playbackConfig: {fileID: 11400000, guid: 76de9c5b93704f5ab2696d27587edf41, type: 2}
   ignoreFastForward: 1
   useDirectorCameraInEditor: 0
   enableUnityChanView: 1

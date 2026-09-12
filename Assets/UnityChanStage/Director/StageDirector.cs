@@ -6,6 +6,9 @@ using Livisor.Live.Effects;
 
 public class StageDirector : MonoBehaviour
 {
+    [SerializeField, Tooltip("Live / Demo の開始位置。未設定なら通常再生。初回再生操作で設定を確定する。")]
+    PerformancePlaybackConfig playbackConfig;
+
     // Control options.
     public bool ignoreFastForward = true;
     public bool useDirectorCameraInEditor = true;
@@ -49,9 +52,18 @@ public class StageDirector : MonoBehaviour
     // 一時停止前の再生速度。再開時に元へ戻す。
     float resumeTimeScale = 1.0f;
     bool isPerformancePaused;
+    bool playbackPrepared;
+    bool musicStartRequested;
+    bool pendingCutStart;
+    AnimationClip directorClip;
+    float musicStartAnimationSeconds;
 
     public bool IsPerformancePaused => isPerformancePaused;
     public MusicPlayerController MusicPlayerController => musicPlayerController;
+    public double PlaybackStartSeconds { get; private set; }
+    public bool CutMode => playbackPrepared ? cutMode : playbackConfig != null && playbackConfig.CutMode;
+    public string PlaybackError { get; private set; }
+    bool cutMode;
 
     /// <summary>
     /// 音楽の再生位置（秒）。まだ鳴っていない・一時停止中は -1。
@@ -149,6 +161,125 @@ public class StageDirector : MonoBehaviour
         }
     }
 
+    void LateUpdate()
+    {
+        if (!pendingCutStart || isPerformancePaused)
+            return;
+
+        // Animation Event のコールバック中に Animator.Update を呼ばず、評価終了後に位置を設定する。
+        pendingCutStart = false;
+        var animationSeconds = musicStartAnimationSeconds + PlaybackStartSeconds;
+        SeekAnimator(GetComponent<Animator>(), animationSeconds);
+        foreach (var go in objectsOnTimeline)
+            foreach (var animator in go.GetComponentsInChildren<Animator>(true))
+                SeekAnimator(animator, animationSeconds);
+
+        RestoreStageState(animationSeconds);
+        if (!musicPlayerController.PlayAllFrom(PlaybackStartSeconds))
+            PausePerformance();
+    }
+
+    bool PreparePlayback()
+    {
+        if (playbackPrepared)
+            return true;
+
+        var seconds = 0.0;
+        var clip = musicPlayerController != null ? musicPlayerController.MainSource?.clip : null;
+        if (clip == null || (playbackConfig != null && !playbackConfig.TryGetStartSeconds(
+                clip.samples / (double)clip.frequency, out seconds))
+            || !musicPlayerController.CanPlayFrom(seconds))
+        {
+            PlaybackError = "開始位置には0以上、全音源の長さ未満の秒数を指定してください。音源の設定も確認してください。";
+            Debug.LogError($"[StageDirector] {PlaybackError}", this);
+            return false;
+        }
+
+        if (seconds > 0)
+        {
+            var animator = GetComponent<Animator>();
+            if (animator != null && animator.runtimeAnimatorController != null)
+                foreach (var candidate in animator.runtimeAnimatorController.animationClips)
+                    foreach (var evt in candidate.events)
+                        if (evt.functionName == nameof(StartMusic))
+                        {
+                            directorClip = candidate;
+                            musicStartAnimationSeconds = evt.time;
+                            break;
+                        }
+
+            if (directorClip == null || musicStartAnimationSeconds + seconds >= directorClip.length)
+            {
+                PlaybackError = "開始位置に対応するStageDirectorのアニメーションがありません。";
+                Debug.LogError($"[StageDirector] {PlaybackError}", this);
+                return false;
+            }
+        }
+
+        PlaybackStartSeconds = seconds;
+        cutMode = playbackConfig != null && playbackConfig.CutMode;
+        PlaybackError = null;
+        playbackPrepared = true;
+        return true;
+    }
+
+    static void SeekAnimator(Animator animator, double seconds)
+    {
+        if (animator == null || animator.runtimeAnimatorController == null || !animator.isActiveAndEnabled)
+            return;
+
+        var fireEvents = animator.fireEvents;
+        var cullingMode = animator.cullingMode;
+        try
+        {
+            animator.fireEvents = false;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            animator.Update(0);
+            for (var layer = 0; layer < animator.layerCount; layer++)
+            {
+                var state = animator.GetCurrentAnimatorStateInfo(layer);
+                // 表情には長さ0のポーズが含まれる。時間を持つレイヤーだけを移動する。
+                if (state.length <= 0)
+                    continue;
+                var normalized = (float)(seconds / state.length);
+                animator.Play(state.fullPathHash, layer, state.loop ? normalized : Mathf.Min(1, normalized));
+            }
+            animator.Update(0);
+        }
+        finally
+        {
+            animator.fireEvents = fireEvents;
+            animator.cullingMode = cullingMode;
+        }
+    }
+
+    void RestoreStageState(double animationSeconds)
+    {
+        // 過去の発火を再現せず、小道具とカメラの最終状態だけを復元する。
+        var activateProps = false;
+        int? cameraIndex = null;
+        bool? autoCamera = null;
+        foreach (var evt in directorClip.events)
+        {
+            if (evt.time > animationSeconds)
+                continue;
+            switch (evt.functionName)
+            {
+                case nameof(ActivateProps): activateProps = true; break;
+                case nameof(SwitchCamera): cameraIndex = evt.intParameter; break;
+                case nameof(StartAutoCameraChange): autoCamera = true; break;
+                case nameof(StopAutoCameraChange): autoCamera = false; break;
+            }
+        }
+        if (activateProps) ActivateProps();
+        if (mainCameraSwitcher != null)
+        {
+            StopAutoCameraChange();
+            if (autoCamera == true) StartAutoCameraChange();
+            if (cameraIndex.HasValue) SwitchCamera(cameraIndex.Value);
+        }
+    }
+
     void SetupCameraRig()
     {
 #if UNITY_EDITOR
@@ -191,15 +322,22 @@ public class StageDirector : MonoBehaviour
 
     public void StartMusic()
     {
-        finaleFired = false;
-        if (musicPlayerController != null)
+        if (musicStartRequested || (musicPlayerController != null && musicPlayerController.HasStarted))
+            return;
+        if (!PreparePlayback())
         {
-            musicPlayerController.PlayAll();
+            PausePerformance();
             return;
         }
 
-        foreach (var source in musicPlayer.GetComponentsInChildren<AudioSource>())
-            source.Play();
+        musicStartRequested = true;
+        finaleFired = false;
+        if (PlaybackStartSeconds > 0)
+        {
+            pendingCutStart = true;
+            return;
+        }
+        musicPlayerController.PlayAllFrom(0);
     }
 
     /// <summary>現在位置で音楽とライブ演出を一時停止する。音源は位置を保持して止め、演出は timeScale でまとめて止める。</summary>
@@ -221,10 +359,13 @@ public class StageDirector : MonoBehaviour
         isPerformancePaused = true;
     }
 
-    /// <summary>一時停止位置から音楽とライブ演出を再開する。まだ一度も鳴らしていなければ先頭から鳴らす。</summary>
+    /// <summary>一時停止位置から再開する。初回は設定を確定し、導入演出後の StartMusic で鳴らす。</summary>
     public void ResumePerformance()
     {
         if (!isPerformancePaused)
+            return;
+
+        if (!PreparePlayback())
             return;
 
         Time.timeScale = resumeTimeScale > 0.0f ? resumeTimeScale : 1.0f;

@@ -69,13 +69,14 @@ public sealed class DemoSceneController : MonoBehaviour
         {
             _positionSeconds = position;
             _finished = false;
+            _playback.BeginAt(_stageDirector.PlaybackStartSeconds);
         }
         else if (_positionSeconds > 0 && !_stageDirector.IsPerformancePaused)
         {
             _positionSeconds = _stageDirector.MusicPlayerController.MainSource.clip.length;
             _finished = true;
         }
-        _playback.Advance(position, Fire);
+        _playback.Advance(position, Fire, RestoreState);
     }
 
     void OnGUI()
@@ -102,6 +103,8 @@ public sealed class DemoSceneController : MonoBehaviour
             : _finished ? "終了"
             : _stageDirector.IsPerformancePaused ? "一時停止" : "待機中";
         return $"DEMO  {FormatTime(_positionSeconds)} / {FormatTime(duration)}  {state}\n"
+            + (_stageDirector.CutMode ? $"カット: ON / 開始 {FormatTime(_stageDirector.PlaybackStartSeconds)}\n" : "カット: OFF\n")
+            + (string.IsNullOrEmpty(_stageDirector.PlaybackError) ? "" : $"設定エラー: {_stageDirector.PlaybackError}\n")
             + $"紙吹雪: {(_confettiOn ? "ON" : "OFF")}\n\n直近の演出（曲内の実行時刻）\n"
             + (_recentEffects.Count == 0 ? "まだ発火していません" : string.Join("\n", _recentEffects));
     }
@@ -118,6 +121,18 @@ public sealed class DemoSceneController : MonoBehaviour
     {
         _stageDirector.PausePerformance();
         Debug.Log("[DemoScene] Pause", this);
+    }
+
+    // 復元した状態を「今発火した演出」の履歴には追加しない。
+    void RestoreState(TimelineAction action)
+    {
+        if (action.Action == ActionType.VolumeChange)
+            _stageDirector.SetMainVolume(action.Value.Number);
+        else if (action.Action == ActionType.Effect)
+        {
+            _confettiOn = action.Value.Text == EffectNames.ConfettiOn;
+            _stageDirector.SetConfetti(_confettiOn);
+        }
     }
 
     // Shared の定義を実行する。

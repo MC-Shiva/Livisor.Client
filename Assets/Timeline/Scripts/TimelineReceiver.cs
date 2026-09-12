@@ -79,8 +79,22 @@ public class TimelineReceiver : MonoBehaviour
             ApplyTransport(state);
 
         if (_playing)
-            _playback.Advance(_stageDirector != null ? _stageDirector.MusicTimeSeconds
-                : _receivedPosition + Time.realtimeSinceStartupAsDouble - _receivedAt, Dispatch);
+        {
+            var position = _stageDirector != null ? _stageDirector.MusicTimeSeconds
+                : _receivedPosition + Time.realtimeSinceStartupAsDouble - _receivedAt;
+            if (position >= 0)
+                _playback.BeginAt(_stageDirector != null ? _stageDirector.PlaybackStartSeconds : 0);
+            _playback.Advance(position, Dispatch, RestoreState);
+        }
+    }
+
+    // カット開始時の復元はUnity内だけに適用する。外部デバイスへの送信や状態publishは行わない。
+    private void RestoreState(TimelineAction action)
+    {
+        if (action.Action == ActionType.VolumeChange)
+            _player.ChangeVolume(action.Value);
+        else if (action.Action == ActionType.Effect && _stageDirector != null)
+            _stageDirector.SetConfetti(action.Value.Text == EffectNames.ConfettiOn);
     }
 
     // 状態の差分を反映する。いま扱うのは音量だけ。他のキー（心拍数・照明色など）は無視する。
