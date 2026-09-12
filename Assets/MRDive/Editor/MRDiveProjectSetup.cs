@@ -28,7 +28,9 @@ namespace Livisor.MRDive.EditorTools
         [MenuItem("Livisor/MR Dive/実機設定を修正", false, 41)]
         public static void Fix()
         {
-            bool ok = EditorUtility.DisplayDialog(
+            // batchmode では Unity がダイアログを出せず必ずキャンセル扱いになるので、
+            // CLI / CI から実行できるよう承認扱いにする。
+            bool ok = Application.isBatchMode || EditorUtility.DisplayDialog(
                 "MR Dive — 実機設定を修正",
                 "Quest でパススルーを出すために、以下を書き換えます。\n\n" +
                 "・Meta の Project Config（パススルー対応 / ローディング画面）\n" +
@@ -372,7 +374,9 @@ namespace Livisor.MRDive.EditorTools
 
                 if (_fixed.Count > 0) summary = $"{_fixed.Count} 件を修正しました。\n\n{summary}";
 
-                EditorUtility.DisplayDialog("MR Dive — 実機設定", summary, "OK");
+                // batchmode ではダイアログを出せないので、ログだけにする。
+                if (!Application.isBatchMode)
+                    EditorUtility.DisplayDialog("MR Dive — 実機設定", summary, "OK");
             }
 
             static void Append(StringBuilder sb, string prefix, List<string> items)

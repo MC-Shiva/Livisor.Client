@@ -59,7 +59,7 @@ namespace Livisor.MRDive.EditorTools
             // 既存ファイルの上書き確認。黙って潰さない。
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>(DiveScenePath) != null)
             {
-                bool overwrite = EditorUtility.DisplayDialog(
+                bool overwrite = Confirm(
                     "ダイブシーンを生成",
                     $"{DiveScenePath} はすでに存在します。\n\n" +
                     "中身をすべて作り直して上書きします。手で加えた変更は失われます。",
@@ -118,11 +118,10 @@ namespace Livisor.MRDive.EditorTools
         {
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>(DiveScenePath) == null)
             {
-                EditorUtility.DisplayDialog(
+                Notify(
                     "Build Settings に登録",
-                    $"{DiveScenePath} がまだありません。\n\n" +
-                    "先に Livisor > MR Dive > ダイブシーンを生成 を実行してください。",
-                    "OK");
+                    $"{DiveScenePath} がまだありません。" +
+                    "先に Livisor > MR Dive > ダイブシーンを生成 を実行してください。");
                 return;
             }
 
@@ -159,7 +158,7 @@ namespace Livisor.MRDive.EditorTools
             message.AppendLine("【変更後】");
             message.AppendLine(DescribeSceneList(ordered.ToArray()));
 
-            bool apply = EditorUtility.DisplayDialog(
+            bool apply = Confirm(
                 "Build Settings に登録",
                 message.ToString(),
                 "この並びにする",
@@ -321,6 +320,32 @@ namespace Livisor.MRDive.EditorTools
                 camera.gameObject.AddComponent<AudioListener>();
 
             return camera;
+        }
+
+        /// <summary>
+        /// 確認ダイアログ。batchmode では Unity がダイアログを出せず必ずキャンセル扱いに
+        /// なる（"This should not be called when not controlled by a human"）ので、
+        /// CLI / CI から実行できるよう承認扱いにする。
+        /// </summary>
+        static bool Confirm(string title, string message, string ok, string cancel)
+        {
+            if (Application.isBatchMode)
+            {
+                Debug.Log($"{LogTag} [batchmode] 確認を自動承認して続行: {title}");
+                return true;
+            }
+            return EditorUtility.DisplayDialog(title, message, ok, cancel);
+        }
+
+        /// <summary>通知だけのダイアログ。batchmode ではログに落とす。</summary>
+        static void Notify(string title, string message)
+        {
+            if (Application.isBatchMode)
+            {
+                Debug.Log($"{LogTag} {title}: {message}");
+                return;
+            }
+            EditorUtility.DisplayDialog(title, message, "OK");
         }
 
         /// <summary>名前 → MainCamera タグ → 最初の Camera、の順で視点カメラを特定する。</summary>
@@ -552,12 +577,22 @@ namespace Livisor.MRDive.EditorTools
         {
             var cameras = FindComponentsInLoadedScenes<Camera>();
 
+            // MainCamera タグの先頭を取ると LeftEyeAnchor を拾ってしまう（OVRCameraRig は
+            // 左目にも MainCamera タグを付ける）。実行時の DiveDirector と同じ手順で
+            // CenterEyeAnchor を優先する。
             Camera main = null;
-            for (int i = 0; i < cameras.Count; i++)
+
+            Transform centerEye = OvrLookup.FindCenterEyeAnchor();
+            if (centerEye != null) main = centerEye.GetComponent<Camera>();
+
+            if (main == null)
             {
-                if (!cameras[i].gameObject.CompareTag("MainCamera")) continue;
-                main = cameras[i];
-                break;
+                for (int i = 0; i < cameras.Count; i++)
+                {
+                    if (!cameras[i].gameObject.CompareTag("MainCamera")) continue;
+                    main = cameras[i];
+                    break;
+                }
             }
 
             if (main == null)

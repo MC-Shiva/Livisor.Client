@@ -327,7 +327,20 @@ namespace Livisor.MRDive
                 return;
             }
 
-            // OVRCameraRig の CenterEyeAnchor には MainCamera タグが付くので、これで拾える。
+            // まず OVRCameraRig の CenterEyeAnchor を直接探す。
+            // Camera.main に頼ってはいけない: OVRCameraRig は LeftEyeAnchor にも
+            // MainCamera タグを付けており、Camera.main がそちらを返すことがある。
+            // そうなると演出の基準点が左目にずれ、パススルーの設定も
+            // CenterEyeAnchor ではなく左目のカメラに当たってしまう。
+            Transform centerEye = OvrLookup.FindCenterEyeAnchor();
+            if (centerEye != null)
+            {
+                _head = centerEye;
+                _eyeCamera = centerEye.GetComponent<Camera>();
+                if (_eyeCamera == null) _eyeCamera = Camera.main;
+                return;
+            }
+
             _eyeCamera = Camera.main;
             if (_eyeCamera == null)
             {
