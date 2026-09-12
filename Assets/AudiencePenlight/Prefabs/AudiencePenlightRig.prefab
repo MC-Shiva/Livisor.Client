@@ -76,7 +76,7 @@ MonoBehaviour:
     swingAngleDegrees: 55
     directionRandomness: 0.15
     armLength: 0.35
-    bpm: 120
+    bpm: 135
     beatsPerSwing: 2
     rhythm: 0
     timingOffsetSeconds: 0.05
