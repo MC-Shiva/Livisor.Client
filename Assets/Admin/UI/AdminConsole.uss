@@ -52,6 +52,11 @@
     margin: 10px;
 }
 
+#lightning-target > .unity-base-field__label {
+    color: var(--color-text-secondary);
+    min-width: 70px;
+}
+
 /*https://docs.unity3d.com/ja/2022.3/Manual/UIE-uxml-element-TextField.html*/
 .console-input > .unity-text-field__input {
     background-color: var(--color-bg-input);

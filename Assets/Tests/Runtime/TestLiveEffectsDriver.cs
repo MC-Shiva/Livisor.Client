@@ -25,6 +25,7 @@ public class TestLiveEffectsDriver : MonoBehaviour
     VisualElement _root;
     float _previousVolume;
     bool _lightningStarted;
+    string _immediateTarget;
 
     void OnEnable()
     {
@@ -46,7 +47,22 @@ public class TestLiveEffectsDriver : MonoBehaviour
             _effects.Add(message.Substring("[Effect] ".Length));
             _times.Add(_director != null ? _director.MusicTimeSeconds : -1);
             if (message == "[Effect] " + EffectNames.Lightning)
+            {
                 _lightningStarted |= FindFirstObjectByType<LightningBolt>()?.IsPlaying == true;
+                if (_immediateTarget != null)
+                {
+                    var bolt = FindObjectsByType<LightningBolt>(FindObjectsSortMode.None).First(b => b.IsPlaying);
+                    var actual = (Vector3)typeof(LightningBolt).GetField("_ground",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(bolt);
+                    var expected = _immediateTarget switch
+                    {
+                        LightningTargets.UnityChan => Vector3.ProjectOnPlane(_director.PerformerHips.position, Vector3.up),
+                        LightningTargets.Audience => new Vector3(0, 0, 10.9f),
+                        _ => Vector3.zero,
+                    };
+                    Check(Vector3.Distance(actual, expected) < 0.001f, $"immediate lightning hits {_immediateTarget}");
+                }
+            }
         }
         if (type == LogType.Error || type == LogType.Exception)
             _errors.Add(message);
@@ -57,6 +73,7 @@ public class TestLiveEffectsDriver : MonoBehaviour
         _director = FindFirstObjectByType<StageDirector>();
         _root = FindFirstObjectByType<AdminConsoleView>().GetComponent<UIDocument>().rootVisualElement;
         yield return null;
+        Check(!_root.Q<Button>("lightning-button").enabledInHierarchy, "immediate effects disabled while disconnected");
         Click("connect-button");
         yield return WaitFor(() => _root.Q<Button>("connect-button").text == "DISCONNECT", 10);
         if (!_root.Q<Button>("play-button").enabledSelf)
@@ -65,6 +82,7 @@ public class TestLiveEffectsDriver : MonoBehaviour
             Finish();
             yield break;
         }
+        Check(!_root.Q<Button>("lightning-button").enabledInHierarchy, "immediate effects disabled before PLAY");
         Click("play-button");
         yield return WaitFor(() => _director.MusicTimeSeconds >= 3, 15);
         Check(_director.MusicTimeSeconds >= 3, "Admin PLAY starts Live music");
@@ -144,12 +162,49 @@ public class TestLiveEffectsDriver : MonoBehaviour
         Check(_director.MusicTimeSeconds >= 61 && _effects.Count == count + 1
             && _effects.Last() == EffectNames.Lightning && Math.Abs(_times.Last() - 60) < 0.3,
             "server default lightning remains after scheduling and cancelling additions");
+        // 予約とは別のボタン操作。送信から発火までの遅延と実際の着弾点も確認する。
+        foreach (var target in new[] { LightningTargets.UnityChan, LightningTargets.Audience, LightningTargets.Stage, LightningTargets.Stage })
+        {
+            _immediateTarget = target;
+            _root.Q<DropdownField>("lightning-target").value = target;
+            yield return Immediate("lightning-button", EffectNames.Lightning);
+            yield return new WaitForSecondsRealtime(0.9f);
+        }
+        _immediateTarget = null;
+        yield return Immediate("silver-streamer-button", EffectNames.SilverStreamer);
+        yield return new WaitForSecondsRealtime(1f);
+        Check(FindFirstObjectByType<SilverStreamerController>().ParticleCount > 0, "immediate silver streamer emits particles");
+        yield return Immediate("silver-streamer-button", EffectNames.SilverStreamer);
+        yield return Immediate("confetti-off-button", EffectNames.ConfettiOff);
+        Check(paper.All(p => !p.isEmitting) && paper.Any(p => p.particleCount > 0), "immediate confetti OFF keeps remaining paper");
+        yield return WaitFor(() => paper.All(p => p.particleCount == 0), 25);
+        Check(paper.All(p => p.particleCount == 0), "immediate confetti drains naturally");
+        yield return Immediate("confetti-on-button", EffectNames.ConfettiOn);
+        yield return new WaitForSecondsRealtime(0.5f);
+        Check(paper.All(p => p.isEmitting && p.particleCount > 0), "immediate confetti ON resumes emission");
+
         Click("stop-button");
         yield return WaitFor(() => _director.IsPerformancePaused, 5);
         Check(_director.IsPerformancePaused, "Admin STOP pauses Live");
+        Check(!_root.Q<Button>("lightning-button").enabledInHierarchy
+            && !_root.Q<Button>("confetti-off-button").enabledInHierarchy, "STOP disables immediate effects");
         Click("connect-button");
         yield return WaitFor(() => _root.Q<Button>("connect-button").text == "CONNECT", 5);
         Finish();
+    }
+
+    IEnumerator Immediate(string button, string effect)
+    {
+        var count = _effects.Count;
+        var transport = _root.Q<Label>("transport-status").text;
+        var sentAt = Time.realtimeSinceStartup;
+        Check(_root.Q<Button>(button).enabledInHierarchy, $"{button} is enabled during playback");
+        Click(button);
+        yield return WaitFor(() => _effects.Count > count, 5);
+        Check(_effects.Count == count + 1 && _effects.Last() == effect
+            && Time.realtimeSinceStartup - sentAt < 1, $"{button} delivers once within 1 second");
+        yield return WaitFor(() => _root.Q<Label>("status-label").text.Contains("送りました"), 5);
+        Check(_root.Q<Label>("transport-status").text == transport, "immediate effect does not add a reservation");
     }
 
     void Schedule(string effectName, int seconds)

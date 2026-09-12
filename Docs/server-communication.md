@@ -8,17 +8,17 @@
 | 対象 | 現在の対応 |
 |---|---|
 | Server | 起動時にSharedの定義を読み、デフォルト演出とAdminの追加予約を一覧で配信する |
-| DemoScene | Sharedを直接読み、紙吹雪の開始・停止、雷、銀テープを単独再生する |
-| Admin | `Effect`を文字列で入力し、全行をまとめて追加できる。デフォルト演出を編集する画面はない |
-| LiveScene | Serverの一覧に従い、紙吹雪の開始・停止、雷、銀テープを実行する。既存のシーン固定演出も動く |
+| DemoScene | 雷はClientのC#定義、紙吹雪と銀テープはSharedの定義で単独再生する |
+| Admin | 演出ボタンで即時操作する。`Effect`の入力行をまとめて予約する操作にも対応する |
+| LiveScene | Serverの予約一覧と即時通知で、紙吹雪の開始・停止、雷、銀テープを実行する。既存のシーン固定演出も動く |
 
 演出の形式・定義の編集・全曲検証は[DemoSceneのデフォルト演出](demo-effects.md)を参照。
-LiveSceneはServerから受信した一覧を使う。DemoSceneはSharedの同じ定義を直接読む。
+LiveSceneはServerから受信した一覧を使う。DemoSceneはClient内の定義を直接読む。
 
 ## 1. まず押さえること
 
 1. サーバーは room ごとに「今の状態」を持っている。状態は 2 種類ある。**トランスポート**（再生中か、いつ始めたか、予約は何か）と、**状態同期**（音量や心拍数などの値）。
-2. 管理者が操作すると、サーバーは状態を更新し、同じ room の全員に「新しい状態」を配る。「PLAY が押された」という操作そのものは配らない。
+2. 再生・停止・予約を操作すると、サーバーは状態を更新し、同じroomの全員へ配る。即時演出は状態に保存せず、操作ごとに通知する。
 3. 音量などの状態同期では、通知に含まれる項目だけを上書きする。通知にない項目は前の値を保つ。
 4. 予約を実行するのはクライアント。LiveSceneでは曲の再生位置が予約時刻に達するまで待つ。
 5. 通信の入口は `RoomClient` 1 つ。MagicOnion を直接触らない。
@@ -42,8 +42,8 @@ LiveSceneはServerから受信した一覧を使う。DemoSceneはSharedの同�
 
 | 経路 | 何をするか | 契約 |
 |---|---|---|
-| Unary サービス | 管理者が操作を送る（再生開始・停止・予約の登録・予約の取消）。応答は送った本人だけに返る | `ITimelineService` |
-| StreamingHub | room に参加する。音量などの値を送る。サーバーからの通知（トランスポート・状態同期）を受ける | `IRoomStateHub`、受信側 `IRoomStateHubReceiver` |
+| Unary サービス | 管理者が操作を送る（再生開始・停止・予約の登録・予約の取消・即時演出）。応答は送った本人だけに返る | `ITimelineService` |
+| StreamingHub | roomに参加する。音量などの値を送る。トランスポート・状態同期・即時演出の通知を受ける | `IRoomStateHub`、受信側 `IRoomStateHubReceiver` |
 
 ```mermaid
 sequenceDiagram
@@ -61,7 +61,7 @@ sequenceDiagram
 ```
 
 - 観客クライアントが Unary を使うのは、参加直後に `GetTransportAsync` を 1 回呼ぶときだけ。参加の応答にはトランスポートが入っていないため。
-- 管理者が Unary で操作すると、応答が管理者に返ると同時に、同じ内容が `OnTransportChanged` で room の全員（管理者自身を含む）に届く。
+- 再生・停止・予約の操作は`OnTransportChanged`、即時演出は`OnEffectTriggered`でroomの全員に届く。
 - 音量は Hub の `PublishAsync` で送る。サーバーが room の状態に重ね、変化した項目だけを `OnStateChanged` で全員に配る。
 
 ## 4. 観客クライアントを作る
@@ -87,19 +87,18 @@ async void Start()
 
 ### 4.2 届いたものをメインスレッドへ渡す
 
-通知は Unity のメインスレッド以外で届く。イベントの中で UI やシーンを触らず、キューに積んで `Update` で処理する。
+通知はUnityのメインスレッド以外で届く。1つのキューに積み、`Update`で受信順に処理する。
 
 ```csharp
-readonly ConcurrentQueue<TransportState> _transports = new();
-readonly ConcurrentQueue<RoomStatePatch> _states = new();
+readonly ConcurrentQueue<Action> _messages = new();
 
-void OnTransport(TransportState s) => _transports.Enqueue(s);
-void OnState(RoomStatePatch p) => _states.Enqueue(p);
+void OnTransport(TransportState s) => _messages.Enqueue(() => ApplyTransport(s));
+void OnState(RoomStatePatch p) => _messages.Enqueue(() => ApplyState(p));
+void OnEffect(EffectCommand e) => _messages.Enqueue(() => FireEffect(e));
 
 void Update()
 {
-    while (_states.TryDequeue(out var p)) ApplyState(p);
-    while (_transports.TryDequeue(out var t)) ApplyTransport(t);
+    while (_messages.TryDequeue(out var apply)) apply();
 }
 ```
 
@@ -232,7 +231,7 @@ await _client.PublishStateAsync(new RoomStateEntry { Key = RoomStateKeys.Volume,
 
 ### 5.3 表示の更新
 
-Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。応答で表示を更新し、通知でも同じ更新をしてよい。通知は非メインスレッドで届くので、観客クライアントと同じくキューに積んで `Update` で反映する。
+送信の完了はUnaryの応答で表示する。再生状態は`OnTransportChanged`をキューに積み、`Update`で反映する。
 
 ### 5.4 演出を予約する入力形式
 
@@ -248,7 +247,26 @@ Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。�
 この入力の送信先はサーバー。DemoSceneはAdminへ接続せず、Sharedの定義を使う。
 LiveSceneで実行するには、AdminとClientを同じサーバー・roomに接続し、PLAY後にSCHEDULEする。
 停止中に予約した場合は、PLAYで再生を始めてから実行する。
-過ぎた時刻を予約すると1回すぐに実行する。今すぐ紙吹雪を止めたい場合は、時刻を`00:00:00:00`、値を`confettiOff`にする。
+過ぎた時刻を予約すると1回すぐに実行する。即時操作には演出ボタンを使う。
+
+### 5.5 演出ボタンで即時操作する
+
+同じServer・roomに接続してPLAYすると、即時演出ボタンが有効になる。
+
+| ボタン | 動作 |
+|---|---|
+| 雷を落とす | `unity-chan`・`audience`・`stage`から選んだ対象へ1回落とす |
+| 銀テープを射出 | 操作のたびに射出する |
+| 紙吹雪 開始 | 紙片の放出を開始する |
+| 紙吹雪 停止 | 放出を止める。表示中の紙片は自然に消える |
+
+`RoomClient.FireEffectAsync(new EffectCommand { Name = EffectNames.Lightning, Target = LightningTargets.Audience })`で送信する。
+Serverは`OnEffectTriggered`で現在の参加者へ通知する。予約キューには追加せず、再接続時にも再送しない。
+雷以外の`Target`は空文字列。未接続・停止中のボタンは無効で、Serverも停止中の要求を拒否する。
+
+LiveSceneの`Stage Director/Lightning Origin`が床面の基準点。
+`unity-chan`は発火時の腰の位置を床面へ投影する。`Lightning Audience`と`Lightning Stage`はInspectorで動かせる固定点。
+`Livisor/Tests/Live Effects`で、予約と即時演出の疎通・着弾点・紙片の自然消滅を検証する。
 
 ## 6. データの形
 
