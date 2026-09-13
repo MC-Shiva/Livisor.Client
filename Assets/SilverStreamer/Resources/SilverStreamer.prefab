@@ -45,10 +45,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   launchPositions:
-  - {x: -4, y: 0.3, z: 2.8}
-  - {x: 4, y: 0.3, z: 2.8}
-  - {x: -2, y: 0.3, z: 4}
-  - {x: 2, y: 0.3, z: 4}
+  - {x: -4, y: 0.3, z: -2.8}
+  - {x: 4, y: 0.3, z: -2.8}
+  - {x: -2, y: 0.3, z: -2.8}
+  - {x: 2, y: 0.3, z: -2.8}
   countPerLauncher: 200
   maxParticles: 800
   lifetime: 12
