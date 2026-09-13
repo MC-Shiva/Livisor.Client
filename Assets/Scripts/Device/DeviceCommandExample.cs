@@ -32,6 +32,9 @@ namespace Livisor.Device
         [Tooltip("疎通確認成功後に音量50%を送る(任意・通常はオフ)")]
         public bool pingVolumeOnStart = false;
 
+        [Tooltip("無効化・シーン終了時に、送信中のコマンドを待ってから停止を送る")]
+        public bool stopOnDisable = false;
+
         LivisorDeviceClient _client;
         Task _initializationTask;
         CancellationTokenSource _connectionCts;
@@ -64,10 +67,26 @@ namespace Livisor.Device
 
         void OnDisable()
         {
+            var client = stopOnDisable && IsReachable ? _client : null;
             _connectionGeneration++;
             CancelConnection();
             _initializationTask = null;
             IsReachable = false;
+            if (client != null)
+                _sendTail = StopAfterAsync(_sendTail, client);
+        }
+
+        static async Task StopAfterAsync(Task previous, LivisorDeviceClient client)
+        {
+            try
+            {
+                await previous;
+                await client.SendStopAsync();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
         }
 
         void CancelConnection()
@@ -131,6 +150,7 @@ namespace Livisor.Device
                     return;
 
                 IsReachable = false;
+                LastError = e.Message;
                 Debug.LogError($"[Livisor] Device 疎通確認失敗: {e.Message}");
                 Debug.LogException(e);
             }

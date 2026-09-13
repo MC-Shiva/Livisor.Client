@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using Livisor.Shared.Common;
-using Livisor.Shared.DTO;
+using Livisor.Device;
 using UnityEngine;
+using UnityEngine.XR;
 
 /// <summary>
-/// 通信を使わないDemoScene専用のライブ操作。
+/// サーバーを使わないDemoScene専用のライブ操作。
 /// StageDirectorの通常の再生経路を使い、音楽と演出のタイミングを維持する。
-/// 雷はClientのC#定義、その他の演出はSharedの定義を音楽の再生位置で発火する。
+/// QuestとキーボードのX/Y/Aで雷・銀テープ・音量を操作する。
 /// </summary>
 [DefaultExecutionOrder(100)]
 [DisallowMultipleComponent]
@@ -20,20 +19,22 @@ public sealed class DemoSceneController : MonoBehaviour
     [SerializeField, Tooltip("Play Mode開始時にライブを自動再生する。")]
     bool _playOnStart = true;
 
-    [Header("Demo lightning positions")]
-    [Tooltip("床面の原点。回転で座標軸の向きを決める。座標の単位はm。")]
-    public Transform lightningOrigin;
-    public Transform lightningAudiencePoint;
-    public Transform lightningStagePoint;
+    [SerializeField, Tooltip("音楽の再生・停止・音量を送る振動デバイス。未設定なら単独で再生する。")]
+    DeviceCommandExample _device;
 
-    readonly DemoLightningSchedule.Cue[] _lightningCues = DemoLightningSchedule.Create().OrderBy(c => c.Seconds).ToArray();
-    int _nextLightning;
-    readonly TimelineActionPlayback _playback = new();
+    [Header("Demo lightning area")]
+    [Tooltip("雷を落とすステージ範囲の中心。")]
+    public Transform lightningStagePoint;
+    [SerializeField, Tooltip("ステージ上のランダム範囲の幅と奥行き（m）。")]
+    Vector2 _lightningAreaSize = new(4, 4);
+
     readonly Queue<string> _recentEffects = new();
-    EffectDispatcher _effects;
+    LightningVfxController _lightning;
+    bool _xWasPressed, _yWasPressed, _aWasPressed;
     double _positionSeconds;
-    bool _confettiOn;
     bool _finished;
+    int _deviceVolume = -1;
+    bool _devicePlaying;
     GUIStyle _statusStyle;
 
     void Awake()
@@ -51,27 +52,32 @@ public sealed class DemoSceneController : MonoBehaviour
             return;
         }
 
-        _effects = new EffectDispatcher(_stageDirector);
-        // Sharedの雷は使わず、Demo専用の時刻・位置を使う。
-        _playback.Load(DefaultTimeline.Create().Where(a => a.Value.Text != EffectNames.Lightning));
-        Debug.Log($"[DemoScene] default actions loaded: {_playback.Count}", this);
+        _stageDirector.FireSilverStreamersOnEnd = false;
+        _lightning = GetComponent<LightningVfxController>();
+        if (_lightning == null) _lightning = gameObject.AddComponent<LightningVfxController>();
+        _lightning.ConfigureRandomArea(lightningStagePoint,
+            new Vector3(_lightningAreaSize.x, 0, _lightningAreaSize.y));
 
         if (_playOnStart)
             ResumePerformance();
 
-        Debug.Log("[DemoScene] S=resume, P=pause, T=silver streamers, E=finale", this);
+        Debug.Log("[DemoScene] X=lightning, Y=silver streamers, A=volume 30%/100%, S=resume, P=pause", this);
     }
 
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.S))
             ResumePerformance();
-        if (Input.GetKeyDown(KeyCode.T))
-            _stageDirector.FireSilverStreamers();
-        if (Input.GetKeyDown(KeyCode.E))
-            _stageDirector.EndPerformance();
         if (Input.GetKeyDown(KeyCode.P))
             PausePerformance();
+
+        var left = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
+        var right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+        left.TryGetFeatureValue(CommonUsages.primaryButton, out var x);
+        left.TryGetFeatureValue(CommonUsages.secondaryButton, out var y);
+        right.TryGetFeatureValue(CommonUsages.primaryButton, out var a);
+        HandleButtons(x || Input.GetKey(KeyCode.X), y || Input.GetKey(KeyCode.Y), a || Input.GetKey(KeyCode.A));
+        SyncDevice();
 
         var position = _stageDirector.MusicTimeSeconds;
         if (position >= 0)
@@ -84,8 +90,66 @@ public sealed class DemoSceneController : MonoBehaviour
             _positionSeconds = _stageDirector.MusicPlayerController.MainSource.clip.length;
             _finished = true;
         }
-        _playback.Advance(position, Fire);
-        AdvanceLightning(position);
+    }
+
+    void SyncDevice()
+    {
+        if (_device == null || !_device.IsReachable)
+        {
+            _deviceVolume = -1;
+            return;
+        }
+
+        var source = _stageDirector.MusicPlayerController.MainSource;
+        var firstSync = _deviceVolume < 0;
+        var volume = Mathf.RoundToInt(source.volume * 100);
+        if (_deviceVolume != volume)
+        {
+            _device.SetVolume(volume);
+            _deviceVolume = volume;
+        }
+        // 実際に音楽が鳴り始めた時点で送る。初回のAnimation Event待ちも含む。
+        if (firstSync || _devicePlaying != source.isPlaying)
+        {
+            _device.ApplyPlaying(source.isPlaying);
+            _devicePlaying = source.isPlaying;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (_device != null && _device.IsReachable)
+            _device.ApplyPlaying(false);
+        _deviceVolume = -1;
+    }
+
+    internal void HandleButtons(bool x, bool y, bool a)
+    {
+        if (x && !_xWasPressed) FireLightning();
+        if (y && !_yWasPressed) FireSilverStreamers();
+        if (a && !_aWasPressed) ToggleVolume();
+        _xWasPressed = x;
+        _yWasPressed = y;
+        _aWasPressed = a;
+    }
+
+    public void FireLightning()
+    {
+        _lightning.Strike(useUnscaledTime: true);
+        RecordEffect("雷");
+    }
+
+    public void FireSilverStreamers()
+    {
+        _stageDirector.FireSilverStreamers();
+        RecordEffect("銀テープ");
+    }
+
+    public void ToggleVolume()
+    {
+        var percent = _stageDirector.MusicPlayerController.MainSource.volume > 0.5f ? 30 : 100;
+        _stageDirector.SetMainVolume(percent);
+        RecordEffect($"音量 {percent}%");
     }
 
     void OnGUI()
@@ -112,9 +176,15 @@ public sealed class DemoSceneController : MonoBehaviour
             : _finished ? "終了"
             : _stageDirector.IsPerformancePaused ? "一時停止" : "待機中";
         return $"DEMO  {FormatTime(_positionSeconds)} / {FormatTime(duration)}  {state}\n"
-            + $"紙吹雪: {(_confettiOn ? "ON" : "OFF")}\n\n直近の演出（曲内の実行時刻）\n"
+            + $"音量: {(source != null ? source.volume * 100 : 0):0}%\n"
+            + $"振動デバイス: {DeviceStatus}\n"
+            + "X: 雷  Y: 銀テープ  A: 音量30%/100%\n\n直近の操作（曲内の実行時刻）\n"
             + (_recentEffects.Count == 0 ? "まだ発火していません" : string.Join("\n", _recentEffects));
     }
+
+    string DeviceStatus => _device == null || !_device.isActiveAndEnabled ? "無効"
+        : !string.IsNullOrEmpty(_device.LastError) ? "通信エラー"
+        : _device.IsReachable ? "接続済み" : "接続確認中";
 
     static string FormatTime(double seconds) => TimeSpan.FromSeconds(seconds).ToString(@"mm\:ss\.ff");
 
@@ -130,69 +200,10 @@ public sealed class DemoSceneController : MonoBehaviour
         Debug.Log("[DemoScene] Pause", this);
     }
 
-    internal void AdvanceLightning(double position)
-    {
-        if (position < 0) return;
-        while (_nextLightning < _lightningCues.Length && _lightningCues[_nextLightning].Seconds <= position)
-        {
-            var cue = _lightningCues[_nextLightning++];
-            _effects.FireLightning(ResolveLightningPosition(cue));
-            RecordEffect($"雷 ({cue.Target ?? cue.LocalPosition.ToString()})");
-        }
-    }
-
-    internal Vector3 ResolveLightningPosition(DemoLightningSchedule.Cue cue)
-    {
-        if (cue.Target == null)
-            return lightningOrigin.position + lightningOrigin.rotation * cue.LocalPosition;
-        return cue.Target switch
-        {
-            "unity-chan" => new Plane(lightningOrigin.up, lightningOrigin.position)
-                .ClosestPointOnPlane(_stageDirector.PerformerHips.position),
-            "audience" => lightningAudiencePoint.position,
-            "stage" => lightningStagePoint.position,
-            _ => throw new ArgumentException($"不明な雷の対象: {cue.Target}"),
-        };
-    }
-
     void RecordEffect(string name)
     {
         if (_recentEffects.Count == 5) _recentEffects.Dequeue();
         _recentEffects.Enqueue($"{FormatTime(_positionSeconds)}  {name}");
-    }
-
-    // Shared の紙吹雪・銀テープなどを実行する。
-    void Fire(TimelineAction action)
-    {
-        switch (action.Action)
-        {
-            case ActionType.Effect:
-                if (action.Value.Kind == ActionValueKind.Text)
-                {
-                    _effects.Fire(action.Value.Text);
-                    var name = action.Value.Text switch
-                    {
-                        EffectNames.ConfettiOn => "紙吹雪 ON",
-                        EffectNames.ConfettiOff => "紙吹雪 OFF",
-                        EffectNames.Lightning => "雷",
-                        EffectNames.SilverStreamer => "銀テープ",
-                        _ => action.Value.Text,
-                    };
-                    if (action.Value.Text == EffectNames.ConfettiOn) _confettiOn = true;
-                    if (action.Value.Text == EffectNames.ConfettiOff) _confettiOn = false;
-                    RecordEffect(name);
-                }
-                break;
-            case ActionType.Play:
-                if (action.Value.Kind == ActionValueKind.Bool)
-                {
-                    if (action.Value.Bool) ResumePerformance(); else PausePerformance();
-                }
-                break;
-            case ActionType.VolumeChange:
-                if (action.Value.Kind == ActionValueKind.Number)
-                    _stageDirector.SetMainVolume(action.Value.Number);
-                break;
-        }
+        Debug.Log($"[DemoScene] {name}", this);
     }
 }

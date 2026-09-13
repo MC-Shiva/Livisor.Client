@@ -97,7 +97,9 @@ public class LightningVfxController : MonoBehaviour
 
     /// <summary>設定に従って落下地点を決め、雷を 1 回落とす。</summary>
     [ContextMenu("テスト発火")]
-    public void Strike()
+    public void Strike() => Strike(useUnscaledTime: false);
+
+    public void Strike(bool useUnscaledTime)
     {
         if (!Application.isPlaying)
         {
@@ -105,11 +107,11 @@ public class LightningVfxController : MonoBehaviour
             return;
         }
 
-        StrikeAt(ResolveGroundPoint());
+        StrikeAt(ResolveGroundPoint(), useUnscaledTime);
     }
 
     /// <summary>着弾点を指定して雷を 1 回落とす。</summary>
-    public void StrikeAt(Vector3 groundPoint)
+    public void StrikeAt(Vector3 groundPoint, bool useUnscaledTime = false)
     {
         if (!Application.isPlaying) return;
         EnsureStrike();
@@ -119,10 +121,17 @@ public class LightningVfxController : MonoBehaviour
         _strike.ConfigureShape(_angularity, _entanglement);
         _strike.ConfigureBundle(_bundleRadius);
         _strike.ConfigureTiming(_trunkHold, _trunkErase, _groundDuration);
-        _strike.Play(groundPoint + Vector3.up * Mathf.Max(0.1f, _startHeight), groundPoint);
+        _strike.Play(groundPoint + Vector3.up * Mathf.Max(0.1f, _startHeight), groundPoint, useUnscaledTime);
     }
 
-    private Vector3 ResolveGroundPoint()
+    public void ConfigureRandomArea(Transform target, Vector3 size)
+    {
+        _target = target;
+        _randomAreaSize = size;
+        _useRandomArea = true;
+    }
+
+    internal Vector3 ResolveGroundPoint()
     {
         Vector3 basePoint = _target != null ? _target.position : transform.position;
         if (!_useRandomArea) return basePoint;

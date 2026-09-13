@@ -8,9 +8,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/DiveEntry.unity
     guid: c3ae40687806b4f52a9644ba80316398
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/LiveScene.unity
     guid: eac708282bd3644f08ee300328f7e486
+  - enabled: 1
+    path: Assets/Scenes/DemoScene.unity
+    guid: 28cae5b24fd346f6b6eda8566b4d67c3
   m_configObjects:
     com.unity.mars-ar-foundation-providers.xr_subsystem_settings: {fileID: 11400000,
       guid: 9becb2a4c15de4948a07e65d001ddbba, type: 2}

@@ -1,75 +1,63 @@
-# DemoSceneの演出を調整する
+# DemoSceneの操作
 
-`Assets/Scenes/DemoScene.unity`を開いてPlay Modeを開始すると、曲の再生位置に合わせて演出を実行します。サーバーやAdminへの接続は不要です。
-画面左上に再生位置、紙吹雪の状態、直近5件の演出と実行時刻を表示します。
+`Assets/Scenes/DemoScene.unity`を開いてPlay Modeを開始すると、音楽とダンスを自動再生します。
+ServerやAdminへの接続は不要です。雷・銀テープはボタンを押したときに出します。
 
-## 雷の時刻と位置
+| 操作 | Meta Quest | PCキーボード |
+|---|---|---|
+| ステージ上に雷を1本落とす | 左手 X | X |
+| 銀テープを射出する | 左手 Y | Y |
+| 音量を30%／100%に切り替える | 右手 A | A |
+| 観客席／Unitychan目線の切替 | 右手 B | C |
+| 視線の正面を合わせ直す | — | R |
+| 音楽を一時停止／再開する | — | P／S |
 
-`Assets/DemoScene/Scripts/DemoLightningSchedule.cs`の`Create()`を編集します。
-各行には、曲の先頭からの秒数と、名前または座標のどちらか一方を指定します。
+PCではGameビューにフォーカスを当てて操作します。
+X・Y・Aは押した瞬間に1回実行します。押し直すと再実行します。
+雷・銀テープは音楽の一時停止中や終了後にも操作できます。
+音量切替はMain音源と接続済みの振動デバイスに適用します。ステージの演出用音源には影響しません。
 
-```csharp
-new(15, "unity-chan"), // 15秒にUnityちゃんの足元へ
-new(30, "audience"),   // 30秒に観客席中央へ
-new(45, 3, 0, 2),      // 45秒にステージ基準の (3, 0, 2) mへ
-new(90, "stage"),      // 90秒にステージ中央へ
-```
+## 振動デバイス
 
-| 名前 | 着弾点 |
-|---|---|
-| `unity-chan` | 発火時の腰の位置を床面へ投影した点。ダンス中の移動に追従する |
-| `audience` | `Lightning Audience`の位置 |
-| `stage` | `Lightning Stage`の位置 |
+`DemoSceneController`の`Device`から、同じLANのラズパイへ直接TCP/JSONを送ります。
+接続先は`DeviceCommandExample`の`Mdns Host Name`（既定: `raspberrypi.local`）、ポートは`9901`です。
+IPを指定する場合は`Manual Ip`に設定します。`TimelineReceiver`はDemoSceneでは無効です。
 
-座標は`Lightning Origin`からの相対位置です。Xは右、Yは上、Zは前、単位はmです。
-原点の位置と回転を反映し、TransformのScaleは座標の単位に影響しません。
-基準点・固定点と`DemoSceneController`の参照はInspectorで調整できます。
+- 音楽が鳴り始めたときに`start`、一時停止・曲終了時に`stop`を送ります。
+- 初回接続とAの音量切替で`volumeChange`を送ります。
+- `Stop On Disable`により、デバイスの無効化・通常のシーン終了時にも停止を送ります。
 
-現在は3〜210秒の3秒間隔で70本を定義しています。
-既存の14本に加え、ステージの左右、前方、客席中央・奥など56か所をXYZ座標で指定しています。
-座標の範囲はX=-12〜12m、Z=-1〜20mです。追加分のYは床面の0mに揃えています。
-行は読み込み時に時刻順へ並べます。同時刻の行はすべて実行します。
-各行は1回だけ実行し、一時停止中は進みません。時刻は音源の終了前に置いてください。
+デバイス側はLiveと同じ再生制御です。雷や銀テープ専用の振動コマンドは送りません。
+再生位置を送る形式ではないため、途中接続や一時停止後の再開で曲位置が一致する保証はありません。
+デバイスが未接続でもDemoは再生を続けます。接続状態は画面左上に表示します。
+接続エラー後は、接続先を確認して`DeviceCommandExample`を無効化・再有効化すると再接続します。
+デバイスを使わない場合は、このコンポーネントを無効にします。
 
-1. Play Modeを終了する。
-2. `DemoLightningSchedule.cs`の秒数・名前・座標を編集する。
-3. Unityのコンパイルが完了してから、DemoSceneを再生する。
+## 雷の範囲
 
-雷の調整にSharedの編集や同期は不要です。
+`DemoSceneController`の`Lightning Stage Point`を中心に、幅・奥行きが各4mの範囲からランダムに選びます。
+高さは中心点の高さです。`Lightning Area Size`で幅と奥行きを調整できます。
 
-## 紙吹雪と銀テープ
-
-既存のShared定義から、0.5秒に紙吹雪を開始し、210秒に放出を停止し、220秒に銀テープを射出します。
-停止後の紙片は自然に消えます。曲終了時の既存の銀テープも再生します。
-Sharedの雷はDemoでは除外し、`DemoLightningSchedule`の一覧だけを使います。
-
-紙吹雪・銀テープの時刻を変更する場合は、親リポジトリの`Livisor.Shared/Common/DefaultTimeline.cs`を編集して`make shared/sync`を実行します。
-この共有定義はServerも利用します。Demo専用の雷の一覧はLiveSceneへ配信されません。
+紙吹雪を含む時刻指定の演出と、曲終了時の自動銀テープはDemoSceneでは実行しません。
+画面左上には再生位置、音量、操作方法、直近5件の操作履歴を表示します。
 
 ## 動作確認
 
-Unityのメニュー`Livisor > Tests > Demo Effects`を実行します。
-約4分半、音をミュートして全曲を再生し、次を確認します。
+Unityの`Livisor > Tests > Demo Effects`を実行します。
+通信を使わず、約30秒で次を確認します。
 
-- 雷70本の発火時刻、着弾位置、VFXの再生
-- 紙吹雪の開始・自然停止・再オン、銀テープの再射出
-- 一時停止・再開、画面の演出履歴、実行エラー
+- 自動発火の停止と、ステージ上のランダム範囲
+- 押しっぱなしでの重複防止、雷・銀テープの再発火と描画
+- 音量30%／100%の切替と、音楽の一時停止・再開
 
-結果は`Logs/demo-effects-check.json`です。完了後に`ok`、`lightningPositionsMatch`、`errors`を確認します。
-雷の最初の3本は`Logs/lightning-position-1.png`〜`3.png`にも保存します。
-検証用のオブジェクトはシーンへ保存せず、終了後はDemoSceneを開き直してください。
+結果は`Logs/demo-effects-check.json`、演出画像は`Logs/demo-buttons-lightning.png`と`Logs/demo-buttons-silver.png`です。
+テストではQuestとキーボードが共用するボタン処理へ入力を渡します。実機のボタン入力・描画はQuestでも確認してください。
 
-Editorを開いている場合は、ClientのルートからUnity CLIでも開始できます。
+`Livisor > Tests > Demo Device (loopback)`では、ローカルのTCP受信先で再生・停止・音量・再接続を検証します。
+結果は`Logs/demo-device-check.json`です。シーンの接続設定は保存せず、実機には送信しません。
+
+Editorを開いている場合は、ClientのルートからCLIでも実行できます。
 
 ```sh
 unity command eval --code 'TestScenes.RunDemoEffects();' --json
 ```
-
-座標変換・移動追従・同時発火の確認は、通常のDemoSceneをPlay Modeにして次を実行します。全曲テストと同時には実行しません。
-
-```sh
-unity command eval --code 'return TestLightningPositions.Run(UnityEngine.Object.FindFirstObjectByType<DemoSceneController>());' --json
-```
-
-テスト用コードは`Assets/Tests`にまとめ、ファイル名・クラス名に`Test`を付けています。
-Gameビューの描画とConsoleも確認してください。Cキーで視点を切り替えられます。

@@ -10,10 +10,12 @@ public class QuestXRInput : MonoBehaviour
     private Transform _rigTransform;
     private bool _primaryButtonWasPressed;
     private bool _secondaryButtonWasPressed;
+    private bool _demoControls;
 
     void Awake()
     {
         _rigTransform = transform;
+        _demoControls = FindFirstObjectByType<DemoSceneController>() != null;
         RefreshControllers();
     }
 
@@ -22,12 +24,17 @@ public class QuestXRInput : MonoBehaviour
         if (_controllers.Count == 0 || !_controllers[0].isValid)
             RefreshControllers();
 
-        var primaryPressed = IsButtonPressed(CommonUsages.primaryButton);
+        var primaryPressed = !_demoControls && IsButtonPressed(CommonUsages.primaryButton);
         if ((primaryPressed && !_primaryButtonWasPressed) || Input.GetKeyDown(editorRecenterKey))
             RecenterYaw();
         _primaryButtonWasPressed = primaryPressed;
 
-        var secondaryPressed = IsButtonPressed(CommonUsages.secondaryButton);
+        bool secondaryPressed;
+        // DemoのYは銀テープに使い、視点切替は右手のBだけにする。
+        if (_demoControls)
+            InputDevices.GetDeviceAtXRNode(XRNode.RightHand).TryGetFeatureValue(CommonUsages.secondaryButton, out secondaryPressed);
+        else
+            secondaryPressed = IsButtonPressed(CommonUsages.secondaryButton);
         if (secondaryPressed && !_secondaryButtonWasPressed)
             GetComponent<UnityChanEyeCamera>()?.ToggleView();
         _secondaryButtonWasPressed = secondaryPressed;

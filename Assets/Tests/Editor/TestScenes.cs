@@ -11,14 +11,25 @@ using UnityEngine;
 /// </summary>
 public static class TestScenes
 {
-    /// <summary>DemoScene の事前定義をサーバーなしで全曲検証する。</summary>
+    /// <summary>DemoScene のボタン演出と音量切替をサーバーなしで検証する。</summary>
     [MenuItem("Livisor/Tests/Demo Effects")]
     public static void RunDemoEffects()
     {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             return;
         EditorSceneManager.OpenScene("Assets/Scenes/DemoScene.unity");
+        foreach (var device in Object.FindObjectsByType<Livisor.Device.DeviceCommandExample>(FindObjectsSortMode.None))
+            device.enabled = false;
         new GameObject("TestDemoEffectsDriver").AddComponent<TestDemoEffectsDriver>();
+        EditorApplication.EnterPlaymode();
+    }
+
+    [MenuItem("Livisor/Tests/Demo Device (loopback)")]
+    public static void RunDemoDevice()
+    {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        EditorSceneManager.OpenScene("Assets/Scenes/DemoScene.unity");
+        new GameObject("TestDemoDeviceDriver").AddComponent<TestDemoDeviceDriver>();
         EditorApplication.EnterPlaymode();
     }
 

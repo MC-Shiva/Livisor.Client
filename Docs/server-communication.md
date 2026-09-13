@@ -8,12 +8,12 @@
 | 対象 | 現在の対応 |
 |---|---|
 | Server | 起動時にSharedの定義を読み、デフォルト演出とAdminの追加予約を一覧で配信する |
-| DemoScene | Sharedを直接読み、紙吹雪の開始・停止、雷、銀テープを単独再生する |
+| DemoScene | Serverに接続せず、QuestまたはPCのX/Y/Aで雷・銀テープ・音量を操作する |
 | Admin | `Effect`を文字列で入力し、全行をまとめて追加できる。デフォルト演出を編集する画面はない |
 | LiveScene | Serverの一覧に従い、紙吹雪の開始・停止、雷、銀テープを実行する。既存のシーン固定演出も動く |
 
-演出の形式・定義の編集・全曲検証は[DemoSceneのデフォルト演出](demo-effects.md)を参照。
-LiveSceneはServerから受信した一覧を使う。DemoSceneはSharedの同じ定義を直接読む。
+Demoの操作と検証は[DemoSceneの操作](demo-effects.md)を参照。
+LiveSceneはServerから受信した一覧を使う。DemoSceneの演出はボタン操作で実行する。
 
 ## 1. まず押さえること
 
@@ -126,7 +126,6 @@ void ApplyState(RoomStatePatch patch)
 `TransportState.Actions`はデフォルト演出と追加予約の全件を持つ。
 `TimelineReceiver`は受信した一覧を`TimelineActionPlayback.Load()`へ渡し、`Playing`で再生・停止を切り替える。
 毎フレーム`Advance()`へ曲の再生位置を渡し、到達したものを一度ずつ実行する。
-DemoSceneもこの再生処理を使う。
 
 LiveSceneは`StageDirector.MusicTimeSeconds`を使う。曲が始まる前と一時停止中は進まない。
 予約時刻は曲の先頭からの位置で、追加時に過ぎていた位置なら1回すぐに実行する。
@@ -245,7 +244,7 @@ Unary の応答と、その直後に届く `OnTransportChanged` は同じ値。�
 
 `SCHEDULE`は全行を追加する。開始と停止の2行を入れると、両方がキューへ追加される。
 `CANCEL`は予約を取り消す操作であり、実行済みの紙吹雪へ停止要求を送る操作ではない。
-この入力の送信先はサーバー。DemoSceneはAdminへ接続せず、Sharedの定義を使う。
+この入力の送信先はサーバー。DemoSceneはAdminへ接続せず、ボタンで演出を操作する。
 LiveSceneで実行するには、AdminとClientを同じサーバー・roomに接続し、PLAY後にSCHEDULEする。
 停止中に予約した場合は、PLAYで再生を始めてから実行する。
 過ぎた時刻を予約すると1回すぐに実行する。今すぐ紙吹雪を止めたい場合は、時刻を`00:00:00:00`、値を`confettiOff`にする。
@@ -261,7 +260,7 @@ LiveSceneで実行するには、AdminとClientを同じサーバー・roomに�
 | `ServerTimeMs` | long | この通知を作ったサーバー時刻（送信時刻） |
 | `Actions` | `TimelineAction[]` | デフォルト演出と追加予約を時刻順に並べた全件 |
 
-MessagePackのキーは0〜3。Key 3を単一予約から配列へ変更したため、ServerとClientは同時に更新する。`TimelineAction`の形式はDemoSceneの事前定義とAdminの予約で共通。
+MessagePackのキーは0〜3。Key 3を単一予約から配列へ変更したため、ServerとClientは同時に更新する。
 
 `TimelineAction`
 

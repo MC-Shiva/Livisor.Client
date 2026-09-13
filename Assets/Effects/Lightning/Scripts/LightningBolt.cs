@@ -45,6 +45,7 @@ public class LightningBolt : MonoBehaviour
     private Vector3 _ground;
     private float _elapsed;
     private bool _playing, _impacted, _vfxAllowed;
+    private bool _useUnscaledTime;
     private static readonly int StrikeTimeId = Shader.PropertyToID("StrikeTime");
 
     public bool IsPlaying => _playing;
@@ -107,7 +108,7 @@ public class LightningBolt : MonoBehaviour
         PrepareExtras();
     }
 
-    public void Play(Vector3 top, Vector3 ground)
+    public void Play(Vector3 top, Vector3 ground, bool useUnscaledTime = false)
     {
         Warmup();
         if (_stripVfx == null || !SystemInfo.supportsComputeShaders
@@ -120,6 +121,7 @@ public class LightningBolt : MonoBehaviour
         if (!gameObject.activeSelf) gameObject.SetActive(true);
         ResetEffects();
         _ground = ground;
+        _useUnscaledTime = useUnscaledTime;
         _elapsed = 0f;
         _impacted = false;
         _playing = true;
@@ -159,7 +161,7 @@ public class LightningBolt : MonoBehaviour
     private void LateUpdate()
     {
         if (!_playing) return;
-        _elapsed += Time.deltaTime;
+        _elapsed += _useUnscaledTime ? Time.unscaledDeltaTime : Time.deltaTime;
         float age = _elapsed - _descentDuration;
         if (age >= Mathf.Max(_trunkHold + _trunkErase, _groundDuration))
         {

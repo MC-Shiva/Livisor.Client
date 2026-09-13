@@ -4,24 +4,26 @@ Livisor for Client
 
 ライブScene: `Assets/Scenes/LiveScene.unity`
 
-通信なしのデモScene: `Assets/Scenes/DemoScene.unity`
+サーバー不要のデモScene: `Assets/Scenes/DemoScene.unity`
 
 観客ClientとAdminの接続、予約の形式、現在の対応範囲は
 [サーバーとの通信](Docs/server-communication.md)を参照してください。
 
 ## DemoSceneでライブ演出を確認
 
-`DemoScene` はサーバー、Admin Scene、ラズパイへ接続せず、ライブの見た目と音楽を確認するためのSceneです。
+`DemoScene` はサーバーとAdmin Sceneを使わず、ライブの見た目と音楽を確認するSceneです。
+同じLANのラズパイには、音楽の再生・停止・音量を直接送れます。
+デバイスを使わない場合は、シーン内の`DeviceCommandExample`を無効にします。
 Play Modeを開始すると自動再生し、Gameビューで **S** を押すと再開、**P** を押すと一時停止します。
 音楽は本番と同じAnimation Eventによって演出開始の約2秒後に再生されます。
-DemoSceneは本番のBuild Settingsには含めません。
+ビルドは`DiveEntry`から始まり、ダイブ演出後に`DemoScene`へ移ります。
 
-雷はClientの`DemoLightningSchedule.cs`、紙吹雪・銀テープはSharedの事前定義から自動再生します。
-演出の形式、編集手順、検証方法は[DemoSceneのデフォルト演出](Docs/demo-effects.md)を参照してください。
+QuestとPCのXでステージ上に雷、Yで銀テープ、Aで音量30%／100%を切り替えます。
+操作方法と検証手順は[DemoSceneの操作](Docs/demo-effects.md)を参照してください。
 
 再生中にGameビューで **C** を押すと、観客席とUnitychan目線を切り替えます。
 Unitychan目線では目の位置に追従して客席を見渡せます。
-Questでは **B / Y** で切り替え、**A / X**（Editorでは **R**）で視線の正面を合わせ直せます。
+DemoSceneのQuestでは **B** で切り替え、Editorでは **R** で視線の正面を合わせ直せます。
 Editorでは滑らかに移動し、HMD接続時は即座に切り替わります。
 
 観客席では自分用ペンライトがQuestの右手コントローラーへ追従します。

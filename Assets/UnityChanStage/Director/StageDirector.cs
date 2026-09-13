@@ -26,6 +26,7 @@ public class StageDirector : MonoBehaviour
 
     [SerializeField] SilverStreamerController silverStreamers;
     bool finaleFired;
+    public bool FireSilverStreamersOnEnd { get; set; } = true;
 
     // Audience placement.
     public Transform audiencePenlightPlacement;
@@ -342,7 +343,7 @@ public class StageDirector : MonoBehaviour
 
     public void EndPerformance()
     {
-        if (!finaleFired)
+        if (!finaleFired && FireSilverStreamersOnEnd)
         {
             finaleFired = true;
             FireSilverStreamers();
