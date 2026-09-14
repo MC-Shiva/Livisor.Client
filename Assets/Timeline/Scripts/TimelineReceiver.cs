@@ -18,14 +18,19 @@ public class TimelineReceiver : MonoBehaviour
     [SerializeField] private StageDirector _stageDirector;
     [SerializeField] private DeviceCommandExample _device;
 
+    [Header("Immediate lightning targets")]
+    [SerializeField] private Transform _lightningOrigin;
+    [SerializeField] private Transform _lightningAudiencePoint;
+    [SerializeField] private Transform _lightningStagePoint;
+
     private IRoomClient _client;
     private IMediaPlayer _player;
 
     private EffectDispatcher _effects;
 
     // 受信は非メインスレッドで起きるため、メインスレッド（Update）で処理するためのキュー。
-    private readonly ConcurrentQueue<TransportState> _pendingTransports = new();
-    private readonly ConcurrentQueue<RoomStatePatch> _pendingStates = new();
+    // 再生・停止と即時演出の受信順を維持する。
+    private readonly ConcurrentQueue<Action> _pendingMessages = new();
 
     private readonly TimelineActionPlayback _playback = new();
     private bool _playing;
@@ -41,6 +46,7 @@ public class TimelineReceiver : MonoBehaviour
         _client = new RoomClient();
         _client.TransportChanged += OnTransportChanged;
         _client.StateChanged += OnStateChanged;
+        _client.EffectTriggered += OnEffectTriggered;
 
         try
         {
@@ -66,21 +72,50 @@ public class TimelineReceiver : MonoBehaviour
     }
 
     // 非メインスレッドの可能性があるため、ここではキューへの追加のみ。
-    private void OnTransportChanged(TransportState state) => _pendingTransports.Enqueue(state);
+    private void OnTransportChanged(TransportState state) => _pendingMessages.Enqueue(() => ApplyTransport(state));
 
-    private void OnStateChanged(RoomStatePatch patch) => _pendingStates.Enqueue(patch);
+    private void OnStateChanged(RoomStatePatch patch) => _pendingMessages.Enqueue(() => ApplyState(patch));
+
+    private void OnEffectTriggered(EffectCommand effect) => _pendingMessages.Enqueue(() => FireEffect(effect));
 
     void Update()
     {
-        while (_pendingStates.TryDequeue(out var patch))
-            ApplyState(patch);
-
-        while (_pendingTransports.TryDequeue(out var state))
-            ApplyTransport(state);
+        while (_pendingMessages.TryDequeue(out var apply))
+            apply();
 
         if (_playing)
             _playback.Advance(_stageDirector != null ? _stageDirector.MusicTimeSeconds
                 : _receivedPosition + Time.realtimeSinceStartupAsDouble - _receivedAt, Dispatch);
+    }
+
+    private void FireEffect(EffectCommand effect)
+    {
+        if (_effects == null)
+        {
+            Debug.Log($"[Effect] {effect.Name} ({effect.Target}, StageDirector が無いため実行しない)");
+            return;
+        }
+
+        if (effect.Name == EffectNames.Lightning)
+        {
+            if (_lightningOrigin == null || _lightningAudiencePoint == null || _lightningStagePoint == null
+                || _stageDirector.PerformerHips == null)
+            {
+                Debug.LogError("[Receiver] 雷の対象位置が未設定です。", this);
+                return;
+            }
+            var position = effect.Target switch
+            {
+                LightningTargets.UnityChan => new Plane(_lightningOrigin.up, _lightningOrigin.position)
+                    .ClosestPointOnPlane(_stageDirector.PerformerHips.position),
+                LightningTargets.Audience => _lightningAudiencePoint.position,
+                LightningTargets.Stage => _lightningStagePoint.position,
+                _ => throw new ArgumentException($"不明な雷の対象: {effect.Target}"),
+            };
+            _effects.FireLightning(position);
+        }
+        else
+            _effects.Fire(effect.Name);
     }
 
     // 状態の差分を反映する。いま扱うのは音量だけ。他のキー（心拍数・照明色など）は無視する。
@@ -164,6 +199,7 @@ public class TimelineReceiver : MonoBehaviour
         {
             _client.TransportChanged -= OnTransportChanged;
             _client.StateChanged -= OnStateChanged;
+            _client.EffectTriggered -= OnEffectTriggered;
             await _client.DisposeAsync();
             _client = null;
         }

@@ -21,6 +21,7 @@ public class RoomClient : IRoomClient, IRoomStateHubReceiver
 
     public event Action<TransportState> TransportChanged;
     public event Action<RoomStatePatch> StateChanged;
+    public event Action<EffectCommand> EffectTriggered;
 
     public async Task ConnectAsync(string serverAddress, string roomId)
     {
@@ -51,11 +52,16 @@ public class RoomClient : IRoomClient, IRoomStateHubReceiver
     public async Task PublishStateAsync(params RoomStateEntry[] entries)
         => await _hub.PublishAsync(entries);
 
+    public async Task FireEffectAsync(EffectCommand effect)
+        => await _timeline.FireEffectAsync(_roomId, effect);
+
     // === IRoomStateHubReceiver（サーバーからの押し出し）===
 
     public void OnStateChanged(RoomStatePatch patch) => StateChanged?.Invoke(patch);
 
     public void OnTransportChanged(TransportState state) => TransportChanged?.Invoke(state);
+
+    public void OnEffectTriggered(EffectCommand effect) => EffectTriggered?.Invoke(effect);
 
     public async ValueTask DisposeAsync()
     {

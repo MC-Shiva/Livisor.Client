@@ -24,6 +24,9 @@ public interface IRoomClient : IAsyncDisposable
     /// </summary>
     event Action<RoomStatePatch> StateChanged;
 
+    /// <summary>即時演出の通知。購読側でメインスレッドへ渡す。</summary>
+    event Action<EffectCommand> EffectTriggered;
+
     /// <summary>接続して room に参加する。参加時点の状態とトランスポートは上のイベントで届く。</summary>
     Task ConnectAsync(string serverAddress, string roomId);
 
@@ -38,6 +41,9 @@ public interface IRoomClient : IAsyncDisposable
 
     /// <summary>追加予約をすべて取り消す。デフォルト演出は残す。</summary>
     Task<TransportState> CancelScheduledActionsAsync();
+
+    /// <summary>再生中のroomに演出を1回送る。</summary>
+    Task FireEffectAsync(EffectCommand effect);
 
     /// <summary>変化した項目を同じ room の全員へ配る。自分にも <see cref="StateChanged"/> で戻ってくる。</summary>
     Task PublishStateAsync(params RoomStateEntry[] entries);
